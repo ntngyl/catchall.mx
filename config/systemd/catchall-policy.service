@@ -1,0 +1,18 @@
+[Unit]
+Description=CatchAll.mx Policy Daemon
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/catchall
+EnvironmentFile=/etc/catchall.env
+ExecStart=/usr/bin/python3 /opt/catchall/policy_daemon.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/catchall/policy.log
+StandardError=append:/var/log/catchall/policy.log
+
+[Install]
+WantedBy=multi-user.target

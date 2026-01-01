@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <title>CatchAll.mx - Simple Email Forwarding for Developers | DNS-Based Email Forwarding Service</title>
+    <meta name="title" content="CatchAll.mx - Simple Email Forwarding for Developers">
+    <meta name="description" content="Free DNS-based email forwarding service. Configure with just 2 DNS records and start forwarding all emails from *@yourdomain.com instantly. No accounts, no dashboards, perfect for developers and side projects.">
+    <meta name="keywords" content="email forwarding, catch-all email, DNS email forwarding, wildcard email, domain email forwarding, developer tools, free email forwarding, SMTP forwarding, email relay">
+    <meta name="author" content="CatchAll.mx">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://catchall.mx/">
+    <meta property="og:title" content="CatchAll.mx - Simple Email Forwarding for Developers">
+    <meta property="og:description" content="Free DNS-based email forwarding service. Configure with just 2 DNS records and start forwarding all emails from *@yourdomain.com instantly. Perfect for developers and side projects.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://catchall.mx/">
+    <meta property="twitter:title" content="CatchAll.mx - Simple Email Forwarding for Developers">
+    <meta property="twitter:description" content="Free DNS-based email forwarding service. Configure with just 2 DNS records and start forwarding all emails from *@yourdomain.com instantly. Perfect for developers and side projects.">
+    <meta property="twitter:image" content="https://catchall.mx/og-image.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PL1PWVY9KG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-PL1PWVY9KG');
+    </script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 20px; text-align: center; }
+        .hero h1 { font-size: 48px; font-weight: 700; margin-bottom: 20px; }
+        .hero p { font-size: 24px; opacity: 0.9; margin-bottom: 40px; }
+        .how-it-works { padding: 80px 20px; background: #f9fafb; }
+        .how-it-works h2 { text-align: center; font-size: 36px; margin-bottom: 60px; }
+        .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; }
+        .step { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .step-number { display: inline-block; background: #667eea; color: white; width: 40px; height: 40px; line-height: 40px; text-align: center; border-radius: 50%; font-weight: bold; margin-bottom: 20px; }
+        .step h3 { font-size: 20px; margin-bottom: 10px; }
+        .step code { display: block; background: #f3f4f6; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 14px; overflow-x: auto; }
+        .dns-checker { padding: 80px 20px; background: white; }
+        .dns-checker h2 { text-align: center; font-size: 36px; margin-bottom: 40px; }
+        .checker-box { max-width: 600px; margin: 0 auto; background: #f9fafb; padding: 40px; border-radius: 12px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] { flex: 1; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px; }
+        button { padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        button:hover { background: #5568d3; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
+        #dns-results { margin-top: 20px; }
+        .result-item { padding: 12px; margin-bottom: 10px; border-radius: 6px; background: white; }
+        .result-item.success { border-left: 4px solid #10b981; }
+        .result-item.warning { border-left: 4px solid #f59e0b; }
+        .result-item.error { border-left: 4px solid #ef4444; }
+        .result-item.loading { border-left: 4px solid #3b82f6; }
+        .important-notice { padding: 80px 20px; background: #fff8e1; border-top: 3px solid #ffc107; border-bottom: 3px solid #ffc107; }
+        .important-notice h2 { text-align: center; font-size: 32px; margin-bottom: 40px; color: #f57c00; }
+        .notice-content { max-width: 800px; margin: 0 auto; }
+        .notice-box { background: white; padding: 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #ff9800; }
+        .notice-box h3 { font-size: 20px; margin-bottom: 15px; color: #e65100; }
+        .notice-box p { font-size: 16px; line-height: 1.8; color: #555; margin-bottom: 10px; }
+        .notice-box ul { margin-left: 20px; margin-top: 10px; }
+        .notice-box li { font-size: 16px; line-height: 1.8; color: #555; margin-bottom: 8px; }
+        .notice-box strong { color: #d84315; }
+        footer { background: #111827; color: white; padding: 40px 20px; text-align: center; }
+        footer a { color: #667eea; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div class="container">
+            <h1>CatchAll.mx</h1>
+            <p>Simple Email Forwarding for Developers</p>
+            <p style="font-size: 18px; opacity: 0.8;">2 DNS records. Done. All emails to *@yourdomain.com forward to you.</p>
+        </div>
+    </section>
+
+    <section class="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Add MX Record</h3>
+                    <p>Point your domain's MX record to our server:</p>
+                    <code>mail.catchall.mx (priority 10)</code>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Add TXT Record</h3>
+                    <p>Set where emails should forward to:</p>
+                    <code>catchall-forward=you@gmail.com</code>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Verify & Done</h3>
+                    <p>Send a test email, click verification link, and you're all set! All emails to *@yourdomain.com will forward to you.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="transparency" style="padding: 80px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
+        <div class="container">
+            <h2 style="text-align: center; font-size: 36px; margin-bottom: 20px;">🔒 How We Handle Your Data</h2>
+            <p style="text-align: center; font-size: 18px; opacity: 0.8; margin-bottom: 50px;">No BS. No tracking. Here's exactly what happens to your emails.</p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; max-width: 1000px; margin: 0 auto;">
+                <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 40px; margin-bottom: 15px;">📨</div>
+                    <h3 style="font-size: 20px; margin-bottom: 10px;">Email Arrives</h3>
+                    <p style="opacity: 0.8; font-size: 15px;">Email hits our server → We read DNS TXT record → Forward to your address → <strong style="color: #4ade80;">Delete immediately</strong></p>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 40px; margin-bottom: 15px;">🗑️</div>
+                    <h3 style="font-size: 20px; margin-bottom: 10px;">Zero Storage</h3>
+                    <p style="opacity: 0.8; font-size: 15px;">We <strong style="color: #4ade80;">don't store</strong> your emails. No database. No backups. Emails pass through and are gone forever.</p>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 40px; margin-bottom: 15px;">🔐</div>
+                    <h3 style="font-size: 20px; margin-bottom: 10px;">What We Store</h3>
+                    <p style="opacity: 0.8; font-size: 15px;">Only: <strong>domain name</strong> + <strong>verified status</strong> + <strong>daily count</strong>. That's it. No email content. No metadata.</p>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 40px; margin-bottom: 15px;">👀</div>
+                    <h3 style="font-size: 20px; margin-bottom: 10px;">No Tracking</h3>
+                    <p style="opacity: 0.8; font-size: 15px;">No analytics on emails. No pixel tracking. No selling data. We literally can't read your emails - they're forwarded and deleted.</p>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 40px; margin-bottom: 15px;">⏱️</div>
+                    <h3 style="font-size: 20px; margin-bottom: 10px;">Verification Queue</h3>
+                    <p style="opacity: 0.8; font-size: 15px;">First email waits for verification (max 24hrs). Once verified → forwarded → <strong style="color: #4ade80;">deleted</strong>. Unverified emails auto-delete after 24hrs.</p>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 40px; margin-bottom: 15px;">📂</div>
+                    <h3 style="font-size: 20px; margin-bottom: 10px;">100% Open Source</h3>
+                    <p style="opacity: 0.8; font-size: 15px;">Don't trust us? <strong style="color: #4ade80;">Read the code.</strong> Every line is on GitHub. Self-host it if you want.</p>
+                    <a href="https://github.com/ntngyl/catchall.mx" target="_blank" style="display: inline-block; margin-top: 10px; color: #667eea; text-decoration: none; font-weight: 600;">→ View on GitHub</a>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 50px; padding: 30px; background: rgba(74, 222, 128, 0.1); border-radius: 12px; border: 1px solid rgba(74, 222, 128, 0.3); max-width: 800px; margin-left: auto; margin-right: auto;">
+                <p style="font-size: 18px; margin: 0;"><strong style="color: #4ade80;">TL;DR:</strong> Email comes in → gets forwarded → gets deleted. We keep nothing except "domain X is verified". That's it.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="important-notice">
+        <div class="container">
+            <h2>⚠️ Important: Check Your Spam Folder</h2>
+            <div class="notice-content">
+                <div class="notice-box">
+                    <h3>📬 Verification Email</h3>
+                    <p>When you first send an email to your domain, we'll send you a <strong>verification email</strong> to prevent spam.</p>
+                    <ul>
+                        <li><strong>Check your spam/junk folder</strong> if you don't see it in your inbox</li>
+                        <li>The subject will be: <strong>"Confirm email forwarding from yourdomain.com"</strong></li>
+                        <li><strong>Mark it as "Not Spam"</strong> or move it to your inbox to ensure future emails are delivered properly</li>
+                    </ul>
+                </div>
+
+                <div class="notice-box">
+                    <h3>🔗 Forwarded Emails with URLs</h3>
+                    <p>Emails containing links may sometimes be filtered as spam by your email provider.</p>
+                    <ul>
+                        <li><strong>Always check your spam folder</strong> if you're expecting an email</li>
+                        <li>Mark legitimate emails as "Not Spam" to train your email provider</li>
+                        <li>Add <strong>forwarded@catchall.mx</strong> to your contacts/safe senders list</li>
+                    </ul>
+                </div>
+
+                <div class="notice-box">
+                    <h3>✅ How to Prevent Spam Filtering</h3>
+                    <p>To ensure all forwarded emails reach your inbox:</p>
+                    <ul>
+                        <li>Whitelist <strong>verify@catchall.mx</strong> and <strong>forwarded@catchall.mx</strong></li>
+                        <li>When you receive the verification email, mark it as "Not Spam" immediately</li>
+                        <li>Move verification and forwarded emails to your inbox folder</li>
+                        <li>This helps Gmail, Outlook, and other providers recognize our emails as legitimate</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="dns-checker">
+        <div class="container">
+            <h2>Check Your DNS Configuration</h2>
+            <div class="checker-box">
+                <div class="input-group">
+                    <input type="text" id="domain-input" placeholder="Enter your domain (e.g., example.com)" onkeypress="if(event.key==='Enter') checkDNS()">
+                    <button id="check-btn" onclick="checkDNS()">Check DNS</button>
+                </div>
+                <div id="dns-results"></div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 CatchAll.mx - Simple email forwarding for developers</p>
+            <p style="margin-top: 10px;">Made with ❤️ for developers</p>
+            <p style="margin-top: 15px;">
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" style="margin: 0 10px;">GitHub</a> |
+                <a href="#transparency" style="margin: 0 10px;">Privacy</a> |
+                <a href="mailto:nitin@mrig.in" style="margin: 0 10px;">Contact</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        async function checkDNS() {
+            const domainInput = document.getElementById('domain-input');
+            const checkBtn = document.getElementById('check-btn');
+            const resultsDiv = document.getElementById('dns-results');
+            const domain = domainInput.value.trim();
+
+            if (!domain) {
+                resultsDiv.innerHTML = '<div class="result-item error">❌ Please enter a domain</div>';
+                return;
+            }
+
+            checkBtn.disabled = true;
+            checkBtn.textContent = 'Checking...';
+            resultsDiv.innerHTML = '<div class="result-item loading">🔍 Checking DNS records...</div>';
+
+            try {
+                const response = await fetch(`/api/check-dns?domain=${encodeURIComponent(domain)}`);
+                const data = await response.json();
+
+                let html = '';
+
+                if (data.mx_record.valid) {
+                    html += `<div class="result-item success">✅ MX Record: ${data.mx_record.value} (priority ${data.mx_record.priority})</div>`;
+                } else {
+                    html += '<div class="result-item error">❌ MX Record: Not configured<br>Add: <code>mail.catchall.mx</code> (priority 10)</div>';
+                }
+
+                const forward = data.txt_records['catchall-forward'];
+                if (forward && forward.valid) {
+                    html += `<div class="result-item success">✅ Forward To: ${forward.value}</div>`;
+                } else {
+                    html += '<div class="result-item error">❌ Forward Address: Not configured<br>Add TXT: <code>catchall-forward=your@email.com</code></div>';
+                }
+
+                const limit = data.txt_records['catchall-limit'];
+                if (limit && limit.found) {
+                    html += `<div class="result-item success">✅ Daily Limit: ${limit.value} emails</div>`;
+                } else {
+                    html += '<div class="result-item warning">ℹ️  Daily Limit: 50 emails (default)</div>';
+                }
+
+                const statusClass = data.status === 'ready' ? 'success' : 'warning';
+                html += `<div class="result-item ${statusClass}"><strong>${data.message}</strong></div>`;
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="result-item error">❌ Error checking DNS: ${error.message}</div>`;
+            } finally {
+                checkBtn.disabled = false;
+                checkBtn.textContent = 'Check DNS';
+            }
+        }
+    </script>
+</body>
+</html>

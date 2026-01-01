@@ -1,0 +1,18 @@
+[Unit]
+Description=CatchAll.mx Web API
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/catchall
+EnvironmentFile=/etc/catchall.env
+ExecStart=/usr/bin/python3 /opt/catchall/web_api.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/catchall/web_api.log
+StandardError=append:/var/log/catchall/web_api.log
+
+[Install]
+WantedBy=multi-user.target

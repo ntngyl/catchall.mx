@@ -1,0 +1,8 @@
+# ===========================================
+# CatchAll.mx Pipe Transport
+# Append this to /etc/postfix/master.cf
+# ===========================================
+
+# CatchAll pipe transport - forwards emails via Python script
+catchall   unix  -       n       n       -       -       pipe
+  flags=DRhu user=nobody argv=/usr/bin/python3 /opt/catchall/forward_email.py ${recipient}
