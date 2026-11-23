@@ -1,0 +1,269 @@
+#!/usr/bin/env python3
+"""
+CatchAll.mx - Main Email Processor with DKIM Signing
+Called by Postfix for each incoming email
+"""
+import sys
+import smtplib
+import redis
+import time
+import dns.resolver
+import logging
+import os
+import dkim  # pip install dkimpy
+from spam_detector import should_block_spam, should_quarantine, validate_sender_authenticity
+
+logging.basicConfig(
+    filename='/var/log/catchall/forwarder.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+DKIM_KEYS_DIR = '/opt/catchall/dkim_keys'
+DKIM_SELECTOR = b'catchall'
+
+def log(message):
+    logging.info(message)
+
+def get_forward_address(domain):
+    """Get forward address from DNS TXT record"""
+    try:
+        answers = dns.resolver.resolve(domain, 'TXT')
+        for rdata in answers:
+            txt = rdata.to_text().strip('"')
+            if 'catchall-forward=' in txt:
+                return txt.split('catchall-forward=')[1].split()[0]
+    except:
+        pass
+    return None
+
+def get_mx_servers(domain):
+    """Get MX servers for a domain, sorted by priority"""
+    try:
+        answers = dns.resolver.resolve(domain, 'MX')
+        return sorted([(r.preference, str(r.exchange).rstrip('.')) for r in answers])
+    except:
+        return []
+
+def is_blocked(domain, recipient_email):
+    """Check if domain is blocked by the recipient"""
+    return r.exists(f"block:{domain}:{recipient_email}")
+
+def is_verified(domain):
+    """Check if domain is verified and not inactive"""
+    active_ts = r.get(f"active:{domain}")
+    if not active_ts:
+        return False
+
+    last_active = int(active_ts)
+    inactive_seconds = time.time() - last_active
+    inactive_days = inactive_seconds / 86400
+
+    if inactive_days > 30:
+        log(f"Domain {domain} inactive for {int(inactive_days)} days, requiring re-verification")
+        r.delete(f"active:{domain}")
+        return False
+
+    return True
+
+def is_dkim_enabled(domain):
+    """Check if DKIM is enabled for a domain"""
+    return r.exists(f"dkim:{domain}")
+
+def get_dkim_private_key(domain):
+    """Get DKIM private key for a domain"""
+    safe_domain = domain.replace('/', '_').replace('..', '_')
+    key_path = os.path.join(DKIM_KEYS_DIR, f"{safe_domain}.private")
+
+    if os.path.exists(key_path):
+        with open(key_path, 'rb') as f:
+            return f.read()
+    return None
+
+def sign_email_with_dkim(email_content, domain):
+    """
+    Sign email with DKIM if enabled for domain
+    Returns signed email content or original if not enabled
+    """
+    if not is_dkim_enabled(domain):
+        return email_content
+
+    private_key = get_dkim_private_key(domain)
+    if not private_key:
+        log(f"DKIM key not found for {domain}, sending unsigned")
+        return email_content
+
+    try:
+        # Convert to bytes if string
+        if isinstance(email_content, str):
+            email_bytes = email_content.encode('utf-8')
+        else:
+            email_bytes = email_content
+
+        # Sign the email
+        signature = dkim.sign(
+            message=email_bytes,
+            selector=DKIM_SELECTOR,
+            domain=domain.encode('utf-8'),
+            privkey=private_key,
+            include_headers=[
+                b'from', b'to', b'subject', b'date', b'message-id',
+                b'content-type', b'mime-version'
+            ]
+        )
+
+        # Prepend signature to email
+        signed_email = signature + email_bytes
+
+        log(f"Email signed with DKIM for {domain}")
+        return signed_email.decode('utf-8') if isinstance(email_content, str) else signed_email
+
+    except Exception as e:
+        log(f"DKIM signing failed for {domain}: {e}")
+        return email_content
+
+def queue_email_and_verify(domain, recipient, email_content):
+    """Queue email and trigger verification"""
+    from queue_manager import queue_email
+    from verification import trigger_verification
+
+    email_id = queue_email(domain, email_content)
+    if not email_id:
+        log(f"Failed to queue email for {domain} - queue full")
+        sys.exit(1)
+
+    log(f"Queued email {email_id} for unverified domain {domain}")
+
+    if not r.exists(f"verify:{domain}"):
+        forward_to = get_forward_address(domain)
+        if forward_to:
+            trigger_verification(domain, forward_to)
+            log(f"Triggered verification for {domain}")
+
+    sys.exit(0)
+
+def forward_email_now(domain, forward_to, email_content):
+    """Forward email immediately via SMTP with optional DKIM signing"""
+
+    # Sign email with DKIM if enabled
+    signed_content = sign_email_with_dkim(email_content, domain)
+
+    dest_domain = forward_to.split('@')[1]
+    mx_servers = get_mx_servers(dest_domain)
+
+    if not mx_servers:
+        log(f"No MX servers found for {dest_domain}")
+        sys.exit(1)
+
+    for priority, mx_host in mx_servers:
+        try:
+            log(f"Connecting to {mx_host} for {dest_domain}")
+
+            server = smtplib.SMTP(mx_host, 25, timeout=30)
+            server.ehlo('mail.catchall.mx')
+
+            try:
+                server.starttls()
+                server.ehlo('mail.catchall.mx')
+            except:
+                pass
+
+            # Send signed email
+            if isinstance(signed_content, bytes):
+                server.sendmail(
+                    f"forwarded@catchall.mx",
+                    [forward_to],
+                    signed_content
+                )
+            else:
+                server.sendmail(
+                    f"forwarded@catchall.mx",
+                    [forward_to],
+                    signed_content.encode('utf-8')
+                )
+            server.quit()
+
+            log(f"Successfully forwarded to {forward_to} via {mx_host}")
+
+            # Update activity timestamp
+            r.set(f"active:{domain}", int(time.time()))
+
+            sys.exit(0)
+
+        except Exception as e:
+            log(f"Failed to send via {mx_host}: {str(e)}")
+            continue
+
+    log(f"Failed to forward to {forward_to} - all MX servers failed")
+    sys.exit(1)
+
+def main():
+    if len(sys.argv) < 2:
+        log("Error: No recipient specified")
+        sys.exit(1)
+
+    recipient = sys.argv[1]
+    domain = recipient.split('@')[1]
+
+    log(f"Processing email for {recipient} (domain: {domain})")
+
+    forward_to = get_forward_address(domain)
+    if not forward_to:
+        log(f"No forward address found for {domain}")
+        sys.exit(0)
+
+    log(f"Forward address: {forward_to}")
+
+    if is_blocked(domain, forward_to):
+        log(f"Domain {domain} is BLOCKED by {forward_to} - discarding email")
+        sys.exit(0)
+
+    email_content = sys.stdin.read()
+
+    # Parse subject for spam detection
+    subject = ''
+    for line in email_content.split('\n'):
+        if line.lower().startswith('subject:'):
+            subject = line.split(':', 1)[1].strip()
+            break
+
+    # Get spam level from DNS
+    spam_level = 'moderate'
+    try:
+        answers = dns.resolver.resolve(domain, 'TXT')
+        for rdata in answers:
+            txt = str(rdata).strip('"')
+            if txt.startswith('catchall-spam='):
+                spam_level = txt.split('=', 1)[1].strip()
+                break
+    except:
+        pass
+
+    # Block obvious spam/phishing
+    if should_block_spam(email_content, subject, spam_level):
+        log(f"SPAM/PHISHING detected for {domain}, discarding")
+        sys.exit(0)
+
+    # Check sender authenticity (SPF + DKIM)
+    auth_result = validate_sender_authenticity(email_content)
+    if not auth_result['overall_pass']:
+        log(f"Sender auth failed for {domain}: SPF={auth_result['spf_reason']}, DKIM={auth_result['dkim_reason']}")
+        quarantine, score = should_quarantine(email_content, subject, spam_level)
+        if quarantine:
+            log(f"Quarantining email for {domain} (score={score})")
+            from quarantine_manager import quarantine_email
+            quarantine_email(domain, email_content, reason='sender_auth_fail', score=score)
+            sys.exit(0)
+
+    if not is_verified(domain):
+        log(f"Domain {domain} not verified - queueing email")
+        queue_email_and_verify(domain, recipient, email_content)
+    else:
+        dkim_status = "with DKIM" if is_dkim_enabled(domain) else "without DKIM"
+        log(f"Domain {domain} verified - forwarding immediately {dkim_status}")
+        forward_email_now(domain, forward_to, email_content)
+
+if __name__ == '__main__':
+    main()
