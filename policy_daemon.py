@@ -10,6 +10,7 @@ import dns.resolver
 import time
 import logging
 from datetime import datetime
+from abuse import is_blocked_domain, is_blocked_target
 
 # Configuration
 REDIS_HOST = 'localhost'
@@ -158,7 +159,7 @@ async def process_request(req):
     domain = recipient.split('@')[1].lower()
 
     # Block disposable/abuse domains at SMTP time
-    if domain in DISPOSABLE_DOMAINS:
+    if domain in DISPOSABLE_DOMAINS or is_blocked_domain(domain):
         logging.warning(f"Blocked disposable domain: {domain}")
         return "action=550 5.1.1 Domain blocked due to abuse\n\n"
 
@@ -167,6 +168,11 @@ async def process_request(req):
     if not config:
         logging.info(f"No valid config for {domain}")
         return "action=550 5.1.1 Domain not configured for catchall\n\n"
+
+    # Block abusive forward targets, whichever domain points at them
+    if is_blocked_target(config['forward']):
+        logging.warning(f"Blocked abusive forward target for {domain}: {config['forward']}")
+        return "action=550 5.7.1 Domain blocked due to abuse\n\n"
 
     # Check rate limits (per source domain)
     rate_ok, limit_type = check_rate_limit(domain, config['limit'])

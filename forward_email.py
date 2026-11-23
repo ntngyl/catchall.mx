@@ -12,6 +12,11 @@ import logging
 import os
 import dkim  # pip install dkimpy
 from spam_detector import should_block_spam, should_quarantine, validate_sender_authenticity
+from abuse import is_abuse_blocked
+
+# Postfix pipe(8) treats this exit status as a temporary failure: the message
+# stays in the Postfix queue and is retried instead of being bounced/lost.
+EX_TEMPFAIL = 75
 
 logging.basicConfig(
     filename='/var/log/catchall/forwarder.log',
@@ -154,8 +159,8 @@ def forward_email_now(domain, forward_to, email_content):
     mx_servers = get_mx_servers(dest_domain)
 
     if not mx_servers:
-        log(f"No MX servers found for {dest_domain}")
-        sys.exit(1)
+        log(f"No MX servers found for {dest_domain} - deferring for retry")
+        sys.exit(EX_TEMPFAIL)
 
     for priority, mx_host in mx_servers:
         try:
@@ -196,8 +201,8 @@ def forward_email_now(domain, forward_to, email_content):
             log(f"Failed to send via {mx_host}: {str(e)}")
             continue
 
-    log(f"Failed to forward to {forward_to} - all MX servers failed")
-    sys.exit(1)
+    log(f"Failed to forward to {forward_to} - all MX servers failed, deferring for retry")
+    sys.exit(EX_TEMPFAIL)
 
 def main():
     if len(sys.argv) < 2:
@@ -215,6 +220,10 @@ def main():
         sys.exit(0)
 
     log(f"Forward address: {forward_to}")
+
+    if is_abuse_blocked(domain, forward_to):
+        log(f"Domain {domain} / target {forward_to} is on the abuse blocklist - discarding email")
+        sys.exit(0)
 
     if is_blocked(domain, forward_to):
         log(f"Domain {domain} is BLOCKED by {forward_to} - discarding email")

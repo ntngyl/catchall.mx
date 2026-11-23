@@ -83,6 +83,7 @@ def flush_queue(domain, forward_to):
     logging.info(f"Total unique emails to forward: {len(all_email_ids)}")
 
     count = 0
+    failed_ids = []
     for email_id in all_email_ids:
         email_path = os.path.join(domain_dir, f"{email_id}.eml")
 
@@ -95,28 +96,59 @@ def flush_queue(domain, forward_to):
                 if forward_email(email_data, forward_to, f"queued@{domain}", domain):
                     count += 1
                     logging.info(f"Successfully forwarded: {email_id}")
+                    os.remove(email_path)
+                    logging.info(f"Removed queued file: {email_id}")
                 else:
-                    logging.error(f"Failed to forward: {email_id}")
-
-                os.remove(email_path)
-                logging.info(f"Removed queued file: {email_id}")
+                    # Keep the file so the email is not lost; the daily
+                    # retry (retry_active_queues) picks it up again.
+                    failed_ids.append(email_id)
+                    logging.error(f"Failed to forward, keeping for retry: {email_id}")
             except Exception as e:
+                failed_ids.append(email_id)
                 logging.error(f"Error flushing {email_id}: {e}")
         else:
             logging.warning(f"Email file not found on disk: {email_id}")
 
-    # Cleanup Redis
+    # Cleanup Redis, keeping only the emails that still need a retry
     r.delete(queue_key)
+    if failed_ids:
+        r.rpush(queue_key, *failed_ids)
+        r.expire(queue_key, 7 * 86400)
 
-    # Cleanup directory
+    # Cleanup directory (only succeeds once it is empty)
     try:
         os.rmdir(domain_dir)
         logging.info(f"Removed queue directory for {domain}")
     except:
         pass
 
-    logging.info(f"Flushed {count} emails for {domain}")
+    logging.info(f"Flushed {count} emails for {domain}, {len(failed_ids)} kept for retry")
     return count
+
+def retry_active_queues():
+    """Retry queued emails left behind for domains that are already verified (cron job)"""
+    import dns.resolver
+    from abuse import is_abuse_blocked
+
+    if not os.path.exists(QUEUE_DIR):
+        return
+
+    for domain in os.listdir(QUEUE_DIR):
+        if not r.exists(f"active:{domain}"):
+            continue
+
+        forward_to = None
+        try:
+            for rdata in dns.resolver.resolve(domain, 'TXT'):
+                txt = str(rdata).strip('"')
+                if txt.startswith('catchall-forward='):
+                    forward_to = txt.split('=', 1)[1]
+                    break
+        except Exception:
+            continue
+
+        if forward_to and not is_abuse_blocked(domain, forward_to):
+            flush_queue(domain, forward_to)
 
 def cleanup_expired_queues():
     """Cleanup old queued emails (cron job)"""
@@ -141,3 +173,4 @@ def cleanup_expired_queues():
 
 if __name__ == '__main__':
     cleanup_expired_queues()
+    retry_active_queues()
