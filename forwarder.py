@@ -7,6 +7,11 @@ import smtplib
 import dns.resolver
 import logging
 
+# Outbound SMTP must leave over IPv4: SPF for catchall.mx lists only the IPv4
+# address and the IPv6 address has no PTR. Binding to an IPv4 wildcard makes
+# smtplib skip the AAAA results and connect over IPv4.
+IPV4_ONLY = ('0.0.0.0', 0)
+
 logging.basicConfig(
     filename='/var/log/catchall/forwarder.log',
     level=logging.INFO,
@@ -40,7 +45,7 @@ def forward_email(email_content, forward_to, sender, domain):
         try:
             logging.info(f"Forwarding queued email to {forward_to} via {mx_host}")
             
-            server = smtplib.SMTP(mx_host, 25, timeout=30)
+            server = smtplib.SMTP(mx_host, 25, timeout=30, source_address=IPV4_ONLY)
             server.ehlo('mail.catchall.mx')
             
             # Try STARTTLS if available
