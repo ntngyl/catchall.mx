@@ -100,6 +100,12 @@
         .copy:hover { color: var(--ink); } .copy.done { color: var(--accent); border-color: var(--accent); }
         .done-box { margin-top: 18px; padding: 16px; border-radius: 12px; background: var(--accent-soft); color: var(--ink); font-size: 15px; }
         .done-box b { color: var(--accent); }
+        .confirm-box { margin-top: 18px; padding: 16px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent-soft); font-size: 15px; }
+        .confirm-box p { color: var(--muted); font-size: 14.5px; margin: 4px 0 12px; }
+        .confirm-box .btn2 { background: var(--ink); color: var(--bg); border: 0; border-radius: 9px; padding: 10px 16px; font: 600 14px var(--sans); cursor: pointer; }
+        .confirm-box .btn2:disabled { opacity: .6; cursor: progress; }
+        .confirm-msg { margin-top: 10px; font-size: 14px; color: var(--muted); }
+        .confirm-msg.good { color: var(--accent); } .confirm-msg.bad { color: var(--bad); }
         .after { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--muted); }
         .after ol { margin: 8px 0 0 18px; } .after li { margin-bottom: 6px; } .after b { color: var(--ink); }
         .after .btn2 { margin-top: 12px; background: var(--ink); color: var(--bg); border: 0; border-radius: 9px; padding: 10px 16px; font: 600 14px var(--sans); cursor: pointer; }
@@ -292,6 +298,8 @@
             fillProviders();
         }
 
+        let targets = [];         // confirmation state per destination, from the API
+        let ready = false;        // DNS setup complete according to the API
         let dkim = null;          // {host, value, published, matches, problem} from /api/dkim, null until loaded
         let domain = '';          // loaded domain, '' until loaded
         let current = null;       // {mx: [...], txt: [...]} from the API, null until loaded
@@ -496,6 +504,15 @@
             if (total === 0) {
                 html += `<div class="done-box"><b>Nothing to change.</b> The records on ${where} already match these choices.</div>`;
             }
+            // Everything is in place: offer the confirmation email right here
+            const waiting = targets.filter((t) => !t.confirmed);
+            if (total === 0 && current && ready && waiting.length) {
+                html += `<div class="confirm-box"><b>Last step: confirm ${waiting.length > 1 ? 'the mailboxes' : 'the mailbox'}</b>` +
+                    `<p>We email a confirmation link to ${waiting.map((t) => `<span class="mono">${esc(t.address)}</span>`).join(', ')}. Forwarding starts when it is clicked.</p>` +
+                    `<button class="btn2" id="send-confirm">Send confirmation email</button><div id="confirm-out"></div></div>`;
+            } else if (total === 0 && current && ready && targets.length) {
+                html += `<div class="done-box"><b>Confirmed.</b> Forwarding is active for ${esc(domain)}.</div>`;
+            }
             if (p.keep.length && current) {
                 html += `<details class="kept"><summary>${p.keep.length} record${p.keep.length > 1 ? 's' : ''} already correct</summary>` +
                         p.keep.map((k) => `<code>${esc(k)}</code>`).join('') + `</details>`;
@@ -506,7 +523,7 @@
                 ${P.path ? '' : '<li>Make these changes at your DNS provider, on the domain itself. Host <span class="mono">@</span> means the domain; some providers want the field left empty or the domain name typed in. Pick your provider above for exact wording.</li>'}
                 <li>${P.txt ? 'Paste values exactly as shown, including the quotes.' : 'Paste values exactly, with no quotes around them.'} Leave TTL on automatic.</li>
                 <li>${total ? 'When you are done, check again to confirm everything is in place.' : 'Changes can take a few minutes to be visible.'}</li>
-                <li>Each mailbox that receives mail (${esc(newTargets.filter((v, i, a) => a.indexOf(v) === i).join(', '))}) gets a confirmation link the first time. Check the spam folder.</li></ol>
+                <li>Each mailbox that receives mail (${esc(newTargets.filter((v, i, a) => a.indexOf(v) === i).join(', '))}) has to confirm once. When the records are in place, check again and a "Send confirmation email" button appears here.</li></ol>
                 ${domain ? `<button class="btn2" id="recheck">Check ${esc(domain)} again</button>` : ''}</div>`;
 
             $('out-title').textContent = total ? `${total} change${total > 1 ? 's' : ''} to make` : 'All set';
@@ -522,6 +539,33 @@
                 setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
             });
             const again = $('recheck'); if (again) again.onclick = () => load(false);
+            const sendBtn = $('send-confirm');
+            if (sendBtn) sendBtn.onclick = () => sendConfirmation(domain, sendBtn, $('confirm-out'));
+        }
+
+
+        // ---- on-demand confirmation: shown once the DNS setup is complete
+        const CONFIRM_TEXT = {
+            sent: (a) => `Confirmation email sent to <span class="mono">${esc(a)}</span>. Click the link in it within 24 hours. Check the spam folder too.`,
+            recent: (a) => `A confirmation email went to <span class="mono">${esc(a)}</span> a few minutes ago. Check the spam folder; you can send another in 10 minutes.`,
+            confirmed: (a) => `<span class="mono">${esc(a)}</span> is already confirmed.`,
+            declined: (a) => `<span class="mono">${esc(a)}</span> has declined forwarding from this domain, so no email was sent.`,
+            failed: (a) => `Could not send to <span class="mono">${esc(a)}</span>. Please try again in a moment.`,
+        };
+        async function sendConfirmation(domainName, button, output) {
+            button.disabled = true; button.textContent = 'Sending…';
+            try {
+                const res = await fetch('/api/confirm', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                         body: JSON.stringify({domain: domainName})});
+                const data = await res.json();
+                if (data.error) output.innerHTML = `<div class="confirm-msg bad">${esc(data.error)}</div>`;
+                else output.innerHTML = data.results.filter((x) => x.state !== 'confirmed' || data.results.length === 1)
+                    .map((x) => `<div class="confirm-msg ${x.state === 'sent' ? 'good' : ''}">${(CONFIRM_TEXT[x.state] || CONFIRM_TEXT.failed)(x.address)}</div>`).join('');
+                button.textContent = 'Send again';
+            } catch (e) {
+                output.innerHTML = '<div class="confirm-msg bad">Could not send. Please try again in a moment.</div>';
+                button.textContent = 'Send confirmation email';
+            } finally { button.disabled = false; }
         }
 
         // ---- load current records
@@ -535,11 +579,12 @@
                 const data = await (await fetch('/api/check-dns?domain=' + encodeURIComponent(d))).json();
                 const fatal = (data.issues || []).find((i) => /does not exist|did not answer|does not look like|your own domain|not catchall/i.test(i.text));
                 if (data.error || !data.current || fatal) {
-                    current = null; domain = ''; dkim = null;
+                    current = null; domain = ''; dkim = null; targets = []; ready = false;
                     status.className = 'bad';
                     status.textContent = data.error || (fatal ? fatal.text : data.message) || 'Could not read that domain.';
                 } else {
                     domain = data.domain; current = data.current; $('domain').value = domain;
+                    targets = data.targets || []; ready = data.status === 'ready';
                     detectProvider(current.nameservers);
                     dkim = null;
                     await loadDkim(false);

@@ -75,6 +75,38 @@ def trigger_verification(domain, recipient_email, key=None):
     logging.info(f"Verification triggered for {domain}")
     return True
 
+def request_confirmation(domain, target, default_target):
+    """
+    Send the confirmation email on request from the website, before any mail
+    has arrived. Returns one of: confirmed, declined, recent, sent, failed.
+    """
+    from routing import has_consent, queue_name
+
+    if r.exists(f"active:{domain}") and has_consent(domain, target, default_target):
+        return 'confirmed'
+    if r.exists(f"block:{domain}:{target}"):
+        return 'declined'
+
+    qname = queue_name(domain, target, default_target)
+    sent_key = f"verify-sent:{qname}"
+    if r.exists(sent_key):
+        return 'recent'          # one email per destination every 10 minutes
+
+    pending = r.get(f"verify:{qname}") or ''
+    parts = pending.split(":", 2)
+    if len(parts) == 3 and parts[0] == 'pending' and parts[2].strip().lower() == target.strip().lower():
+        # A link is already out: send the same one again rather than invalidating it
+        queue_count = str(r.llen(f"queue:{qname}") or 0)
+        ok = send_verification_email(domain, target, parts[1], queue_count, qname)
+    else:
+        r.delete(f"verify:{qname}")
+        ok = trigger_verification(domain, target, key=qname)
+
+    if ok:
+        r.setex(sent_key, 600, "1")
+        return 'sent'
+    return 'failed'
+
 def send_verification_email(domain, recipient, token, queue_count, key=None):
     """Send verification email via Accumbamail SMTP"""
 
@@ -90,11 +122,24 @@ def send_verification_email(domain, recipient, token, queue_count, key=None):
     msg['Message-ID'] = email.utils.make_msgid(domain='catchall.mx')
     msg['Date'] = email.utils.formatdate(localtime=True)
 
+    # Wording depends on whether mail is already waiting or the owner asked
+    # for the confirmation from the website before any mail arrived.
+    if str(queue_count) == "0":
+        intro_text = (f"The domain {domain} has been set up to forward its email to your address "
+                      f"({recipient}), and a confirmation was requested on catchall.mx.")
+        intro_html = (f"The domain <strong>{domain}</strong> has been set up to forward its email to "
+                      f"your address, and a confirmation was requested on catchall.mx:")
+    else:
+        intro_text = (f"Someone sent {queue_count} email(s) to an address at {domain}, which is "
+                      f"configured to forward to your email ({recipient}).")
+        intro_html = (f"Someone sent <strong>{queue_count}</strong> email(s) to an address at "
+                      f"<strong>{domain}</strong>, which is configured to forward to your email:")
+
     # Plain text version
     text_body = f"""
 Hi,
 
-Someone sent {queue_count} email(s) to an address at {domain}, which is configured to forward to your email ({recipient}).
+{intro_text}
 
 To prevent spam, please confirm:
 
@@ -123,8 +168,7 @@ This link expires in 24 hours. Emails waiting for it are deleted after that.
     <div style="background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <h2 style="color: #333; margin-bottom: 20px;">Confirm Email Forwarding</h2>
         <p style="color: #666; font-size: 16px; line-height: 1.6;">
-            Someone sent <strong>{queue_count}</strong> email(s) to an address at <strong>{domain}</strong>,
-            which is configured to forward to your email:
+            {intro_html}
         </p>
         <p style="background: #f5f5f5; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
             {recipient}
@@ -247,7 +291,9 @@ def verify_domain_token(name, provided_token, action):
         count = flush_queue(name, recipient_email)
 
         logging.info(f"Domain {domain} ACCEPTED by its destination, forwarded {count} emails")
-        return True, f"<strong>{domain}</strong> verified! We've forwarded <strong>{count}</strong> email(s) to you. Future emails from this domain will be forwarded automatically."
+        if count:
+            return True, f"<strong>{domain}</strong> verified! We've forwarded <strong>{count}</strong> email(s) to you. Future emails from this domain will be forwarded automatically."
+        return True, f"<strong>{domain}</strong> is confirmed. Emails sent to this domain will now be forwarded to you automatically."
 
     else:
         return False, "Invalid action"

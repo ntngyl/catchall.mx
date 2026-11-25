@@ -353,9 +353,26 @@ def check_domain(raw_domain, is_dkim_enabled=None, is_abuse_blocked=None):
             pass
         if not result['verified']:
             _issue(issues, 'info',
-                   f"One step left: send an email to any address at {domain}. We will send a "
-                   f"confirmation link to {forward_to} (check the spam folder). Forwarding "
-                   "starts once you click it.")
+                   f"One step left: {forward_to} has to confirm. Send the confirmation email "
+                   "below and click the link in it (check the spam folder).")
+        # Confirmation state of every destination, for the "send confirmation" button
+        try:
+            from routing import parse_txt, has_consent, queue_name
+            cfg = parse_txt(_txt_values(res, domain))
+            active = result['verified']
+            result['targets'] = []
+            for t in cfg.targets():
+                confirmed = bool(active and has_consent(domain, t, cfg.forward))
+                result['targets'].append({
+                    'address': t,
+                    'confirmed': confirmed,
+                    'pending': bool(not confirmed and r.exists(f"verify:{queue_name(domain, t, cfg.forward)}")),
+                    'declined': bool(r.exists(f"block:{domain}:{t}")),
+                })
+            if result['targets'] and not all(t['confirmed'] for t in result['targets']):
+                result['verified'] = False
+        except Exception:
+            pass
     elif forward_ok:
         result['status'] = 'partial'
         result['message'] = 'Forward record is fine. The MX record needs fixing.'

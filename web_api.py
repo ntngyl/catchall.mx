@@ -50,6 +50,51 @@ def check_dns():
     return jsonify(check_domain(raw, is_dkim_enabled=is_dkim_enabled,
                                 is_abuse_blocked=is_abuse_blocked))
 
+@app.route('/api/confirm', methods=['POST'])
+def api_confirm():
+    """Send the confirmation email to a domain's unconfirmed destinations, on request.
+
+    Only works for a domain whose DNS already points here, only to addresses
+    named in that DNS, and at most one email per destination every 10 minutes.
+    """
+    import hashlib
+    from dns_check import check_domain
+    from abuse import is_abuse_blocked
+    from verification import request_confirmation
+
+    data = request.get_json(silent=True) or {}
+    raw = (data.get('domain') or request.form.get('domain') or '').strip()
+    if not raw:
+        return jsonify({'error': 'Domain is required.'}), 400
+
+    # Per-visitor limit; the address is only kept as a short-lived hash
+    ip = request.headers.get('X-Real-IP') or request.remote_addr or ''
+    rl_key = "rl:confirm:" + hashlib.sha256(ip.encode()).hexdigest()[:16]
+    if r.incr(rl_key) == 1:
+        r.expire(rl_key, 3600)
+    if int(r.get(rl_key) or 0) > 20:
+        return jsonify({'error': 'Too many requests. Please try again in an hour.'}), 429
+
+    check = check_domain(raw, is_abuse_blocked=is_abuse_blocked)
+    if check.get('status') != 'ready':
+        return jsonify({'error': 'The DNS records are not complete yet. Finish the setup first.',
+                        'status': check.get('status')}), 400
+
+    domain = check['domain']
+    default_target = check['txt_records']['catchall-forward']['value']
+    results = []
+    for t in (check.get('targets') or [])[:10]:
+        address = t['address']
+        if is_abuse_blocked(domain, address):
+            state = 'declined'
+        else:
+            state = request_confirmation(domain, address, default_target)
+        results.append({'address': address, 'state': state})
+    logging.info(f"Confirmation requested from the website for {domain}: "
+                 f"{[x['state'] for x in results]}")
+    return jsonify({'domain': domain, 'results': results})
+
+
 @app.route('/api/dkim')
 def api_dkim():
     """DKIM record for a domain, for the record builder.

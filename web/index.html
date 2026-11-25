@@ -107,6 +107,10 @@
         .result-item.loading .ic { color: var(--hero-muted); animation: spin 1s linear infinite; }
         .result-item .fix { display: block; margin-top: 4px; color: var(--hero-muted); }
         .result-item .fix b { color: var(--hero-ink); font-weight: 600; }
+        .result-item.confirm { border-color: var(--mint); grid-template-columns: 0 1fr; gap: 0; }
+        .btn.small { display: block; margin-top: 10px; padding: 9px 14px; font-size: 14px; }
+        .confirm-msg { margin-top: 10px; font-size: 14px; color: var(--hero-muted); }
+        .confirm-msg.good { color: var(--mint); } .confirm-msg.bad { color: #ff8a80; }
         .result-item.summary { background: transparent; border-style: dashed; font-weight: 600; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .checker .hint { margin-top: 14px; font-size: 13px; color: #7d8592; }
@@ -281,7 +285,7 @@
                 <div class="card">
                     <div class="num">03</div>
                     <h3>Confirm once</h3>
-                    <p>Send any email to your domain. We send a confirmation link to your mailbox, so nobody can forward mail to an address that did not agree.</p>
+                    <p>Check your domain above and press "Send confirmation email". Your mailbox gets a link to click, so nobody can forward mail to an address that did not agree.</p>
                     <p class="note">No link in your inbox? Check the spam folder and mark it "Not spam".</p>
                 </div>
             </div>
@@ -443,6 +447,31 @@
         const item = (kind, html, cls) =>
             `<div class="result-item ${cls || (kind === 'info' ? 'warning' : kind)}">${ICONS[kind]}<div>${html}</div></div>`;
 
+
+        // ---- on-demand confirmation: shown once the DNS setup is complete
+        const CONFIRM_TEXT = {
+            sent: (a) => `Confirmation email sent to <span class="mono">${esc(a)}</span>. Click the link in it within 24 hours. Check the spam folder too.`,
+            recent: (a) => `A confirmation email went to <span class="mono">${esc(a)}</span> a few minutes ago. Check the spam folder; you can send another in 10 minutes.`,
+            confirmed: (a) => `<span class="mono">${esc(a)}</span> is already confirmed.`,
+            declined: (a) => `<span class="mono">${esc(a)}</span> has declined forwarding from this domain, so no email was sent.`,
+            failed: (a) => `Could not send to <span class="mono">${esc(a)}</span>. Please try again in a moment.`,
+        };
+        async function sendConfirmation(domainName, button, output) {
+            button.disabled = true; button.textContent = 'Sending…';
+            try {
+                const res = await fetch('/api/confirm', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                         body: JSON.stringify({domain: domainName})});
+                const data = await res.json();
+                if (data.error) output.innerHTML = `<div class="confirm-msg bad">${esc(data.error)}</div>`;
+                else output.innerHTML = data.results.filter((x) => x.state !== 'confirmed' || data.results.length === 1)
+                    .map((x) => `<div class="confirm-msg ${x.state === 'sent' ? 'good' : ''}">${(CONFIRM_TEXT[x.state] || CONFIRM_TEXT.failed)(x.address)}</div>`).join('');
+                button.textContent = 'Send again';
+            } catch (e) {
+                output.innerHTML = '<div class="confirm-msg bad">Could not send. Please try again in a moment.</div>';
+                button.textContent = 'Send confirmation email';
+            } finally { button.disabled = false; }
+        }
+
         async function checkDNS() {
             const domainInput = document.getElementById('domain-input');
             const checkBtn = document.getElementById('check-btn');
@@ -498,8 +527,15 @@
                         const perDay = (limit && limit.found && limit.valid) ? esc(limit.value) : '50 (default)';
                         html += item('info', `Daily limit: ${perDay} emails`, 'success');
                     }
-                    if (data.verified) {
+                    const targets = data.targets || [];
+                    const waiting = targets.filter((t) => !t.confirmed);
+                    if (data.status === 'ready' && targets.length && !waiting.length) {
                         html += item('success', 'Confirmed. Forwarding is active.');
+                    }
+                    if (data.status === 'ready' && waiting.length) {
+                        html += `<div class="result-item confirm"><div></div><div><b>Last step: confirm ${waiting.length > 1 ? 'the mailboxes' : 'the mailbox'}</b>` +
+                            `<span class="fix">We email a confirmation link to ${waiting.map((t) => `<span class="mono">${esc(t.address)}</span>`).join(', ')}. Forwarding starts when it is clicked.</span>` +
+                            `<button class="btn small" id="send-confirm">Send confirmation email</button><div id="confirm-out"></div></div></div>`;
                     }
 
                     const kind = data.status === 'ready' ? 'success' : (data.status === 'blocked' ? 'error' : 'warning');
@@ -507,6 +543,8 @@
                 }
 
                 resultsDiv.innerHTML = html;
+                const sendBtn = document.getElementById('send-confirm');
+                if (sendBtn) sendBtn.onclick = () => sendConfirmation(data.domain, sendBtn, document.getElementById('confirm-out'));
                 if (data.domain && !data.error) {
                     document.getElementById('builder-link').href = '/setup/?domain=' + encodeURIComponent(data.domain);
                 }
