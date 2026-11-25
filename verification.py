@@ -29,7 +29,7 @@ r = redis.Redis(decode_responses=True)
 # 2026-11-04 onward). NOTE: final delivery to Gmail destinations depends on the
 # box's outbound reverse DNS (IPv6 PTR) being in place.
 LOCAL_SMTP_HOST = "localhost"
-LOCAL_SMTP_PORT = 25
+LOCAL_SMTP_PORT = 10026  # outbound-only listener (master.cf); port 25 routes everything to catchall-pipe
 FROM_EMAIL = "verify@catchall.mx"
 FROM_NAME = "CatchAll.mx"
 
