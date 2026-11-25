@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email forwarding setup guides by DNS provider - CatchAll.mx</title>
+    <meta name="description" content="How to set up free catch-all email forwarding at Cloudflare, GoDaddy, Namecheap, Squarespace, Porkbun, IONOS, Hostinger, Route 53 and OVHcloud: the exact menus and fields.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/guides/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/guides/">
+    <meta property="og:title" content="Email forwarding setup guides by DNS provider - CatchAll.mx">
+    <meta property="og:description" content="How to set up free catch-all email forwarding at Cloudflare, GoDaddy, Namecheap, Squarespace, Porkbun, IONOS, Hostinger, Route 53 and OVHcloud: the exact menus and fields.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/" class=here>Setup guides</a><a href="/tools/">DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a></p>
+            <h1>Setup guides by DNS provider</h1>
+            <p class="lede">The same two records everywhere, but every provider names its menus and fields differently. Pick yours for the exact clicks.</p>
+
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Providers</h2>
+            <div class="body">
+<ul class="links"><li><a href="/guides/cloudflare/"><b>Cloudflare</b><span>MX: Name @, Mail server mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/godaddy/"><b>GoDaddy</b><span>MX: Name @, Value mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/namecheap/"><b>Namecheap</b><span>MX: Host @, Value mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/squarespace/"><b>Squarespace Domains (formerly Google Domains)</b><span>MX: Name @, Mail Server mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/porkbun/"><b>Porkbun</b><span>MX: Host empty, Answer mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/ionos/"><b>IONOS</b><span>MX: Host name @, Points to mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/hostinger/"><b>Hostinger</b><span>MX: Name @, Mail server (Points to) mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/route53/"><b>Amazon Route 53</b><span>MX: Record name empty, Value mail.catchall.mx.</span><i>→</i></a></li><li><a href="/guides/ovh/"><b>OVHcloud</b><span>MX: Subdomain @, Target mail.catchall.mx.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Somewhere else?<small>The general version.</small></h2>
+            <div class="body">
+
+                <p>Any provider that lets you add MX and TXT records works. The records are:</p>
+                <div class="rec"><span class="t">MX</span><span class="v">mail.catchall.mx &nbsp;priority 10</span><button class="copy" data-copy="mail.catchall.mx">Copy</button></div>
+                <div class="rec"><span class="t">TXT</span><span class="v">catchall-forward=you@example.com</span><button class="copy" data-copy="catchall-forward=you@example.com">Copy</button></div>
+                <p style="margin-top:16px">Both go on the domain itself, which most providers write as <code>@</code>. The <a href="/setup/">record builder</a> reads what your domain has now and lists what to add, change or delete. It also knows DigitalOcean, Gandi and Name.com.</p>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>

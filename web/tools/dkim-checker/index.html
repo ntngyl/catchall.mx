@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DKIM checker: find and validate DKIM keys - CatchAll.mx</title>
+    <meta name="description" content="Free DKIM record checker. Looks up a domain&#x27;s DKIM key by selector, or tries the common selectors for you, and checks key length, truncation and stray quote marks.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/tools/dkim-checker/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/tools/dkim-checker/">
+    <meta property="og:title" content="DKIM checker: find and validate DKIM keys - CatchAll.mx">
+    <meta property="og:description" content="Free DKIM record checker. Looks up a domain&#x27;s DKIM key by selector, or tries the common selectors for you, and checks key length, truncation and stray quote marks.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/">Setup guides</a><a href="/tools/" class=here>DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a> / <a href="/tools/">DNS tools</a></p>
+            <h1>DKIM checker</h1>
+            <p class="lede">Finds the DKIM keys a domain publishes and checks each one is complete and long enough. Leave the selector empty and the common ones are tried for you.</p>
+            <div class="check" data-tool="dkim" style="margin-top:30px">
+                <label for="domain">Domain to look up</label>
+                <div class="input-group">
+                    <input type="text" id="domain" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <input type="text" id="selector" class="narrow" placeholder="selector (optional)" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="DKIM selector"><button class="btn">Check DKIM</button>
+                </div>
+                <div id="out" aria-live="polite"></div>
+                <p class="foot">Reads public DNS only. Lookups are not saved, and there is nothing to sign up for.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>What a selector is</h2>
+            <div class="body">
+
+                <p>A domain can have many DKIM keys, one per sending service. Each is published under its own name, the selector, at <code>selector._domainkey.yourdomain.com</code>.</p>
+                <p>DNS has no way to list them, so a checker either needs the selector or has to guess. This one tries about thirty names the well-known mail services use, such as <code>google</code>, <code>selector1</code> and <code>k1</code>.</p>
+                <h3>Finding your selector</h3>
+                <p>Open any email sent from the domain, choose "Show original" or "View source", and find the <code>DKIM-Signature</code> header. The value after <code>s=</code> is the selector, and <code>d=</code> is the domain it belongs to.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Common problems</h2>
+            <div class="body">
+
+                <h3>The key was cut short</h3>
+                <p>A 2048-bit key is longer than the 255 characters some DNS forms accept in one piece. If the end is missing, signatures fail. Providers handle long values differently; some split them for you, some need a different entry mode.</p>
+                <h3>Quote marks inside the value</h3>
+                <p>If your provider adds quotes itself and you paste a value that already has them, the quotes become part of the key and it stops working. Paste the value without any quote marks.</p>
+                <h3>A 1024-bit key</h3>
+                <p>It still verifies, but 2048 bits has been the standard for years. Keys shorter than 1024 bits are ignored by the large mailbox providers.</p>
+                <h3>An empty p=</h3>
+                <p>That is a revoked key. It is how a service says "do not trust signatures made with this selector any more".</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>More tools</h2>
+            <div class="body">
+<ul class="links"><li><a href="/tools/"><b>Email DNS check</b><span>MX, SPF, DKIM and DMARC for a domain in one go.</span><i>→</i></a></li><li><a href="/tools/mx-lookup/"><b>MX lookup</b><span>Which servers receive mail for a domain, and whether they resolve.</span><i>→</i></a></li><li><a href="/tools/spf-checker/"><b>SPF checker</b><span>Reads the SPF record term by term and counts its DNS lookups.</span><i>→</i></a></li><li><a href="/tools/dmarc-checker/"><b>DMARC checker</b><span>Shows the DMARC policy and what it does to forged mail.</span><i>→</i></a></li><li><a href="/"><b>Free email forwarding</b><span>Every address at your domain, delivered to the inbox you already use.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>

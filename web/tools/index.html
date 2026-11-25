@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email DNS check: MX, SPF, DKIM and DMARC in one lookup - CatchAll.mx</title>
+    <meta name="description" content="Free check of a domain&#x27;s email DNS records. Looks up MX, SPF, DKIM and DMARC together and explains every problem in plain words. No sign-up.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/tools/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/tools/">
+    <meta property="og:title" content="Email DNS check: MX, SPF, DKIM and DMARC in one lookup - CatchAll.mx">
+    <meta property="og:description" content="Free check of a domain&#x27;s email DNS records. Looks up MX, SPF, DKIM and DMARC together and explains every problem in plain words. No sign-up.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/">Setup guides</a><a href="/tools/" class=here>DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a></p>
+            <h1>Check a domain's email DNS</h1>
+            <p class="lede">One lookup for the four things that decide whether a domain's email works and is trusted: MX, SPF, DKIM and DMARC. Each problem comes with what to change.</p>
+            <div class="check" data-tool="all" style="margin-top:30px">
+                <label for="domain">Domain to look up</label>
+                <div class="input-group">
+                    <input type="text" id="domain" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button class="btn">Check domain</button>
+                </div>
+                <div id="out" aria-live="polite"></div>
+                <p class="foot">Reads public DNS only. Lookups are not saved, and there is nothing to sign up for.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>The four records<small>What each one is for.</small></h2>
+            <div class="body">
+
+                <h3>MX: where mail is delivered</h3>
+                <p>MX records name the servers that accept mail for the domain. No MX record, or one pointing at a host that does not exist, and incoming mail bounces.</p>
+                <h3>SPF: which servers may send</h3>
+                <p>An SPF record is a list of the servers allowed to send mail using the domain. Receivers compare the sending server against it.</p>
+                <h3>DKIM: a signature on each message</h3>
+                <p>The sending service signs every message, and publishes the public key in DNS so receivers can check the message was not altered or forged.</p>
+                <h3>DMARC: what to do with failures</h3>
+                <p>DMARC tells receivers what to do when a message passes neither SPF nor DKIM for your domain: deliver it anyway, put it in spam, or refuse it. It also asks them to send you reports.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Tools<small>One page per record type, with more detail.</small></h2>
+            <div class="body">
+<ul class="links"><li><a href="/tools/mx-lookup/"><b>MX lookup</b><span>Which servers receive mail for a domain, and whether they resolve.</span><i>→</i></a></li><li><a href="/tools/spf-checker/"><b>SPF checker</b><span>Reads the SPF record term by term and counts its DNS lookups.</span><i>→</i></a></li><li><a href="/tools/dkim-checker/"><b>DKIM checker</b><span>Finds a domain&#x27;s DKIM keys and checks they are usable.</span><i>→</i></a></li><li><a href="/tools/dmarc-checker/"><b>DMARC checker</b><span>Shows the DMARC policy and what it does to forged mail.</span><i>→</i></a></li><li><a href="/setup/"><b>Record builder</b><span>Works out the exact records for catchall.mx forwarding at your DNS provider.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>About these tools</h2>
+            <div class="body">
+
+                <p>They are part of <a href="/">catchall.mx</a>, a free service that forwards every address at your domain to an inbox you already have. The same checks run on our own mail server all day, so we made them usable for any domain.</p>
+                <p class="soft">Lookups go from our server straight to public DNS. We do not keep a history of what was looked up.</p>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>

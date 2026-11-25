@@ -50,6 +50,25 @@ def check_dns():
     return jsonify(check_domain(raw, is_dkim_enabled=is_dkim_enabled,
                                 is_abuse_blocked=is_abuse_blocked))
 
+@app.route('/api/tools/<tool>')
+def api_tools(tool):
+    """Free DNS tools: MX, SPF, DKIM and DMARC lookups for any domain. Nothing is stored."""
+    import hashlib
+    from dns_tools import run
+
+    raw = request.args.get('domain', '')
+    if not raw.strip():
+        return jsonify({'error': 'Enter a domain first.'}), 400
+    ip = request.headers.get('X-Real-IP') or request.remote_addr or ''
+    rl_key = "rl:tools:" + hashlib.sha256(ip.encode()).hexdigest()[:16]
+    if r.incr(rl_key) == 1:
+        r.expire(rl_key, 3600)
+    if int(r.get(rl_key) or 0) > 120:
+        return jsonify({'error': 'Too many lookups from your connection. Please try again in an hour.'}), 429
+    result = run(tool, raw[:300], request.args.get('selector', '')[:80])
+    return jsonify(result), (400 if 'error' in result else 200)
+
+
 @app.route('/api/confirm', methods=['POST'])
 def api_confirm():
     """Send the confirmation email to a domain's unconfirmed destinations, on request.

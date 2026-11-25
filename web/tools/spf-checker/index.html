@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPF checker: validate an SPF record and count lookups - CatchAll.mx</title>
+    <meta name="description" content="Free SPF record checker. Explains each term of a domain&#x27;s SPF record, follows every include to count DNS lookups against the limit of 10, and catches duplicate records.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/tools/spf-checker/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/tools/spf-checker/">
+    <meta property="og:title" content="SPF checker: validate an SPF record and count lookups - CatchAll.mx">
+    <meta property="og:description" content="Free SPF record checker. Explains each term of a domain&#x27;s SPF record, follows every include to count DNS lookups against the limit of 10, and catches duplicate records.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/">Setup guides</a><a href="/tools/" class=here>DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a> / <a href="/tools/">DNS tools</a></p>
+            <h1>SPF checker</h1>
+            <p class="lede">Reads a domain's SPF record one term at a time, says what each part allows, and counts the DNS lookups against the limit of 10.</p>
+            <div class="check" data-tool="spf" style="margin-top:30px">
+                <label for="domain">Domain to look up</label>
+                <div class="input-group">
+                    <input type="text" id="domain" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button class="btn">Check SPF</button>
+                </div>
+                <div id="out" aria-live="polite"></div>
+                <p class="foot">Reads public DNS only. Lookups are not saved, and there is nothing to sign up for.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>How SPF works</h2>
+            <div class="body">
+
+                <p>SPF is one TXT record on the domain that starts with <code>v=spf1</code>. It lists who may send mail for the domain, then ends with what to do about everyone else:</p>
+                <table>
+                    <tr><td><code>include:_spf.google.com</code></td><td>Allow the servers this other record allows. One per mail service you send through.</td></tr>
+                    <tr><td><code>ip4:203.0.113.5</code></td><td>Allow this address.</td></tr>
+                    <tr><td><code>mx</code> / <code>a</code></td><td>Allow the domain's own mail servers, or its own address.</td></tr>
+                    <tr><td><code>-all</code></td><td>Reject everyone not listed.</td></tr>
+                    <tr><td><code>~all</code></td><td>Treat everyone not listed as suspicious. The usual choice.</td></tr>
+                </table>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Common problems</h2>
+            <div class="body">
+
+                <h3>Two SPF records</h3>
+                <p>A domain may have only one. With two, receivers give up and SPF fails for everything. This is the most common SPF mistake: each new service's instructions say "add this TXT record" when they should say "add this include to your existing record".</p>
+                <h3>More than 10 DNS lookups</h3>
+                <p>Every <code>include</code>, <code>a</code>, <code>mx</code> and <code>redirect</code> costs a lookup, and includes can contain more includes. Past 10, receivers stop and return an error. The tool follows the whole chain and gives you the real number.</p>
+                <h3>+all or ?all at the end</h3>
+                <p><code>+all</code> lets anyone send as your domain. <code>?all</code> says you have no opinion. Either way the record protects nothing.</p>
+                <h3>SPF and forwarding</h3>
+                <p>When mail is forwarded, it arrives from the forwarder's server, which is not in the original sender's SPF record. That is why forwarded mail depends on DKIM, and why <a href="/">catchall.mx</a> leaves a valid DKIM signature untouched.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>More tools</h2>
+            <div class="body">
+<ul class="links"><li><a href="/tools/"><b>Email DNS check</b><span>MX, SPF, DKIM and DMARC for a domain in one go.</span><i>→</i></a></li><li><a href="/tools/mx-lookup/"><b>MX lookup</b><span>Which servers receive mail for a domain, and whether they resolve.</span><i>→</i></a></li><li><a href="/tools/dkim-checker/"><b>DKIM checker</b><span>Finds a domain&#x27;s DKIM keys and checks they are usable.</span><i>→</i></a></li><li><a href="/tools/dmarc-checker/"><b>DMARC checker</b><span>Shows the DMARC policy and what it does to forged mail.</span><i>→</i></a></li><li><a href="/"><b>Free email forwarding</b><span>Every address at your domain, delivered to the inbox you already use.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>

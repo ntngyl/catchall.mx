@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /api/
+Disallow: /verify/
+Disallow: /quarantine
+
+Sitemap: https://catchall.mx/sitemap.xml

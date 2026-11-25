@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free email forwarding for a OVHcloud domain - CatchAll.mx</title>
+    <meta name="description" content="Step-by-step: forward every address at a domain on OVHcloud to Gmail, Outlook or any inbox. Two DNS records, the exact fields to fill in at OVHcloud, free, no account.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/guides/ovh/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/guides/ovh/">
+    <meta property="og:title" content="Free email forwarding for a OVHcloud domain - CatchAll.mx">
+    <meta property="og:description" content="Step-by-step: forward every address at a domain on OVHcloud to Gmail, Outlook or any inbox. Two DNS records, the exact fields to fill in at OVHcloud, free, no account.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/" class=here>Setup guides</a><a href="/tools/">DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a> / <a href="/guides/">Setup guides</a></p>
+            <h1>Email forwarding for a domain on OVHcloud</h1>
+            <p class="lede">Send every address at your domain to the inbox you already use. It takes two DNS records at OVHcloud and about two minutes. Free, and there is no account to create.</p>
+
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Before you start</h2>
+            <div class="body">
+
+                <ul>
+                    <li><b>The domain's DNS is at OVHcloud.</b> Its nameservers end in <code>ovh.net</code>, <code>ovh.ca</code> or <code>anycast.me</code>. If you are not sure, the <a href="/setup/">record builder</a> looks it up and detects the provider for you.</li>
+                    <li><b>You know where the mail should go.</b> Any inbox you already read: Gmail, Outlook, iCloud, a work address.</li>
+                    <li><b>Nothing else needs this domain's mail.</b> Forwarding replaces whatever receives it now. Mailboxes at Google Workspace, Microsoft 365 or your host stop receiving once the MX record changes.</li>
+                </ul>
+                <div class="tip"><b>Type your inbox address here</b> and the records below are filled in for you. It stays in your browser.
+                    <div class="field-row"><input type="email" id="fwd" placeholder="you@example.com" autocomplete="email" autocapitalize="none" spellcheck="false" aria-label="Your inbox address"></div>
+                </div>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>The steps<small>What to click and type at OVHcloud.</small></h2>
+            <div class="body">
+
+                <ol class="steps">
+                    <li><b>Open the DNS records.</b>
+                        <p>Log in to the OVHcloud Manager and open <b>Web Cloud</b>. Go to <b>Domains &amp; DNS</b>, then <b>Portfolio</b>, and choose your domain. Open the <b>DNS zone</b> tab and click <b>Create a record</b> for each record below.</p></li>
+                    <li><b>Delete the MX records that are already there.</b>
+                        <p>A domain should have one mail service. If old MX records stay, some mail keeps going to the old place. Leave every other record alone; your website is not affected.</p></li>
+                    <li><b>Add the MX record.</b>
+                        <p>This tells the world that catchall.mx receives the domain's mail. Subdomain is <code>@</code>, which means the domain itself.</p>
+                        <div class="fields"><div><span>Type</span><code>MX</code></div><div><span>Subdomain</span><code>@</code></div><div><span>Priority</span><code>10</code></div><div><span>Target</span><code>mail.catchall.mx</code><button class="copy" data-copy="mail.catchall.mx">Copy</button></div></div></li>
+                    <li><b>Add the TXT record.</b>
+                        <p>This tells us where to send the mail. Use the address where you actually read email.</p>
+                        <div class="fields"><div><span>Type</span><code>TXT</code></div><div><span>Subdomain</span><code>@</code></div><div><span>Value</span><code data-fwd="catchall-forward={a}">catchall-forward=you@example.com</code><button class="copy" data-copy="catchall-forward=you@example.com">Copy</button></div></div></li>
+                    <li><b>Check it and confirm once.</b>
+                        <p>Enter the domain below. When both records are right, a button appears that emails a confirmation link to your inbox. Click the link and forwarding starts. The confirmation exists so nobody can point a domain at your address and flood you.</p>
+                        <div class="field-row"><input type="text" id="check-domain" placeholder="yourdomain.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Your domain"><button class="btn" id="check-go">Check</button></div></li>
+                </ol>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Things to know at OVHcloud</h2>
+            <div class="body">
+<ul><li>The form adds the final dot to the mail server name itself; type it without one.</li><li>The normal form limits a TXT value to 255 characters. That is plenty for these records, but a DKIM key is longer: if you add DKIM later, use <b>Modify zone</b> (text mode) for that one record.</li></ul>
+                <p class="soft">Menu names were checked against OVHcloud's own help pages in November 2026. If a screen looks different, the <a href="/setup/">record builder</a> reads your domain's current records and tells you exactly what to add, change or delete.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>If something is off</h2>
+            <div class="body">
+
+                <h3>The checker still shows the old records</h3>
+                <p>DNS changes are usually visible within a few minutes, but an old answer can be cached for as long as the record's previous TTL, often an hour. Wait and check again before changing anything.</p>
+                <h3>The confirmation email did not arrive</h3>
+                <p>Look in the spam folder first. The link is valid for 24 hours, and the checker can send it again after ten minutes.</p>
+                <h3>Mail from some senders is missing</h3>
+                <p>Look for leftover MX records from a previous mail service; the <a href="/tools/mx-lookup/">MX lookup</a> shows all of them. Mail that arrives before you confirm is held for 24 hours and delivered once you do.</p>
+                <h3>You want to stop</h3>
+                <p>Delete the two records. Nothing else needs undoing, and there is no account to close.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>After it works<small>Optional extras.</small></h2>
+            <div class="body">
+
+                <h3>Different addresses to different inboxes</h3>
+                <p>More TXT records can send single addresses elsewhere, block addresses that get spam, or accept only a list you choose. The <a href="/setup/">record builder</a> writes them for you.</p>
+                <h3>Sign forwarded mail as your domain</h3>
+                <p>Adding one DKIM record lets forwarded mail be signed by your own domain, which helps it reach the inbox. It is optional, and the builder covers it too.</p>
+                <h3>Check the rest of your email DNS</h3>
+                <p>The <a href="/tools/">DNS check</a> looks at MX, SPF, DKIM and DMARC together.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Other providers</h2>
+            <div class="body">
+<ul class="links"><li><a href="/guides/cloudflare/"><b>Cloudflare</b><span>Email forwarding for a domain on Cloudflare.</span><i>→</i></a></li><li><a href="/guides/godaddy/"><b>GoDaddy</b><span>Email forwarding for a domain on GoDaddy.</span><i>→</i></a></li><li><a href="/guides/namecheap/"><b>Namecheap</b><span>Email forwarding for a domain on Namecheap.</span><i>→</i></a></li><li><a href="/guides/squarespace/"><b>Squarespace Domains</b><span>Email forwarding for a domain on Squarespace Domains.</span><i>→</i></a></li><li><a href="/guides/porkbun/"><b>Porkbun</b><span>Email forwarding for a domain on Porkbun.</span><i>→</i></a></li><li><a href="/guides/ionos/"><b>IONOS</b><span>Email forwarding for a domain on IONOS.</span><i>→</i></a></li><li><a href="/guides/hostinger/"><b>Hostinger</b><span>Email forwarding for a domain on Hostinger.</span><i>→</i></a></li><li><a href="/guides/route53/"><b>Amazon Route 53</b><span>Email forwarding for a domain on Route 53.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>

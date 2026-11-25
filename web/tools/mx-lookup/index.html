@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MX lookup: find a domain&#x27;s mail servers - CatchAll.mx</title>
+    <meta name="description" content="Free MX record lookup. Shows the mail servers for any domain in priority order, checks that each one resolves, and flags records left over from another mail service.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/tools/mx-lookup/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/tools/mx-lookup/">
+    <meta property="og:title" content="MX lookup: find a domain&#x27;s mail servers - CatchAll.mx">
+    <meta property="og:description" content="Free MX record lookup. Shows the mail servers for any domain in priority order, checks that each one resolves, and flags records left over from another mail service.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/">Setup guides</a><a href="/tools/" class=here>DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a> / <a href="/tools/">DNS tools</a></p>
+            <h1>MX lookup</h1>
+            <p class="lede">See which mail servers receive email for a domain, in the order they are tried, and whether each one actually resolves.</p>
+            <div class="check" data-tool="mx" style="margin-top:30px">
+                <label for="domain">Domain to look up</label>
+                <div class="input-group">
+                    <input type="text" id="domain" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button class="btn">Look up MX</button>
+                </div>
+                <div id="out" aria-live="polite"></div>
+                <p class="foot">Reads public DNS only. Lookups are not saved, and there is nothing to sign up for.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Reading the result</h2>
+            <div class="body">
+
+                <p>Each MX record has a number and a host name. The number is the priority: sending servers try the lowest number first and move to the next only if that one does not answer.</p>
+                <p>The host name must be a name, not an IP address, and it must resolve to an address itself. The tool checks both and names the mail service when it recognises it.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Common problems</h2>
+            <div class="body">
+
+                <h3>Records for two different mail services</h3>
+                <p>This happens when a new service is added without removing the old one. Mail then lands at whichever server answers, so some arrives and some seems to vanish. Keep one service's records.</p>
+                <h3>The MX host does not exist</h3>
+                <p>Usually a typo, or a trailing part of your own domain added by the DNS provider (<code>mail.example.net.yourdomain.com</code>). Some providers need a dot at the end of the host name to prevent that.</p>
+                <h3>No MX record at all</h3>
+                <p>Senders fall back to the domain's website address, which normally does not accept mail. If the domain should receive mail, it needs an MX record.</p>
+                <h3>A change does not show yet</h3>
+                <p>DNS answers are cached for as long as the record's TTL says, often an hour. This tool asks fresh each time the cache allows, but your own computer or provider may keep the old answer longer.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>More tools</h2>
+            <div class="body">
+<ul class="links"><li><a href="/tools/"><b>Email DNS check</b><span>MX, SPF, DKIM and DMARC for a domain in one go.</span><i>→</i></a></li><li><a href="/tools/spf-checker/"><b>SPF checker</b><span>Reads the SPF record term by term and counts its DNS lookups.</span><i>→</i></a></li><li><a href="/tools/dkim-checker/"><b>DKIM checker</b><span>Finds a domain&#x27;s DKIM keys and checks they are usable.</span><i>→</i></a></li><li><a href="/tools/dmarc-checker/"><b>DMARC checker</b><span>Shows the DMARC policy and what it does to forged mail.</span><i>→</i></a></li><li><a href="/"><b>Free email forwarding</b><span>Every address at your domain, delivered to the inbox you already use.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>

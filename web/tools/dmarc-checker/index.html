@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMARC checker: look up and explain a DMARC record - CatchAll.mx</title>
+    <meta name="description" content="Free DMARC record checker. Finds the DMARC policy that applies to a domain or subdomain, explains each tag, and warns when forged mail would still be delivered.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/tools/dmarc-checker/">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://catchall.mx/tools/dmarc-checker/">
+    <meta property="og:title" content="DMARC checker: look up and explain a DMARC record - CatchAll.mx">
+    <meta property="og:description" content="Free DMARC record checker. Finds the DMARC policy that applies to a domain or subdomain, explains each tag, and warns when forged mail would still be delivered.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/site.css?v=2">
+</head>
+<body>
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/"><i></i>catchall.mx</a>
+            <nav><a href="/#setup">How it works</a><a href="/guides/">Setup guides</a><a href="/tools/" class=here>DNS tools</a><a class="cta" href="/setup/">Record builder</a></nav>
+        </div>
+    </header>
+    <main>
+        <section class="head"><div class="wrap">
+            <p class="crumbs"><a href="/">catchall.mx</a> / <a href="/tools/">DNS tools</a></p>
+            <h1>DMARC checker</h1>
+            <p class="lede">Shows a domain's DMARC record, what each part of it means, and whether forged mail using the domain is stopped or still delivered.</p>
+            <div class="check" data-tool="dmarc" style="margin-top:30px">
+                <label for="domain">Domain to look up</label>
+                <div class="input-group">
+                    <input type="text" id="domain" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button class="btn">Check DMARC</button>
+                </div>
+                <div id="out" aria-live="polite"></div>
+                <p class="foot">Reads public DNS only. Lookups are not saved, and there is nothing to sign up for.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>How DMARC works</h2>
+            <div class="body">
+
+                <p>DMARC is a TXT record at <code>_dmarc.yourdomain.com</code>. A message passes when SPF or DKIM passes <em>and</em> the domain that passed matches the one in the From line. For everything else, the record's policy applies:</p>
+                <table>
+                    <tr><td><code>p=none</code></td><td>Deliver as usual. Only collect reports.</td></tr>
+                    <tr><td><code>p=quarantine</code></td><td>Put failing mail in the spam folder.</td></tr>
+                    <tr><td><code>p=reject</code></td><td>Refuse failing mail.</td></tr>
+                    <tr><td><code>rua=mailto:…</code></td><td>Where receivers send their daily summary reports.</td></tr>
+                    <tr><td><code>sp=</code></td><td>A separate policy for subdomains.</td></tr>
+                </table>
+                <p>A subdomain without its own record uses the main domain's. The tool follows that and tells you which record applied.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>A safe way to turn it on</h2>
+            <div class="body">
+
+                <ol>
+                    <li>Start with <code>v=DMARC1; p=none; rua=mailto:you@yourdomain.com</code>. Nothing changes for your mail; you only start getting reports.</li>
+                    <li>Read the reports for a couple of weeks. They list every server sending as your domain and whether it passed.</li>
+                    <li>Fix the services that fail, usually by setting up DKIM for them.</li>
+                    <li>Move to <code>p=quarantine</code>, and later <code>p=reject</code>.</li>
+                </ol>
+                <p class="soft">Gmail and Yahoo expect at least <code>p=none</code> from domains that send in volume, so having no record at all is the one state to avoid.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>Common problems</h2>
+            <div class="body">
+
+                <h3>The record is on the wrong name</h3>
+                <p>It belongs on <code>_dmarc</code>, not on the domain itself. Some DNS forms add the domain automatically, so typing the full name produces <code>_dmarc.example.com.example.com</code>.</p>
+                <h3>Two DMARC records</h3>
+                <p>With more than one, receivers ignore DMARC for the domain entirely.</p>
+                <h3>No rua address</h3>
+                <p>The policy still works, but you never see who is sending as your domain, which is most of what makes DMARC useful.</p>
+            </div>
+        </div></section>        <section class="sec"><div class="wrap">
+            <h2>More tools</h2>
+            <div class="body">
+<ul class="links"><li><a href="/tools/"><b>Email DNS check</b><span>MX, SPF, DKIM and DMARC for a domain in one go.</span><i>→</i></a></li><li><a href="/tools/mx-lookup/"><b>MX lookup</b><span>Which servers receive mail for a domain, and whether they resolve.</span><i>→</i></a></li><li><a href="/tools/spf-checker/"><b>SPF checker</b><span>Reads the SPF record term by term and counts its DNS lookups.</span><i>→</i></a></li><li><a href="/tools/dkim-checker/"><b>DKIM checker</b><span>Finds a domain&#x27;s DKIM keys and checks they are usable.</span><i>→</i></a></li><li><a href="/"><b>Free email forwarding</b><span>Every address at your domain, delivered to the inbox you already use.</span><i>→</i></a></li></ul>
+            </div>
+        </div></section>
+    </main>
+    <footer>
+        <div class="wrap">
+            <span>catchall.mx is a small, free email forwarder.</span>
+            <nav>
+                <a href="/guides/">Setup guides</a>
+                <a href="/tools/">DNS tools</a>
+                <a href="/setup/">Record builder</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="/tools.js?v=2" defer></script>
+</body>
+</html>
