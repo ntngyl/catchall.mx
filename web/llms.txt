@@ -1,0 +1,15 @@
+# CatchAll.mx
+
+> CatchAll.mx is a free catch-all email forwarding service for custom domains. It is configured entirely with DNS records: one MX record and one TXT record forward every address at a domain to an existing inbox such as Gmail or Outlook. There is no account, no dashboard and no paid plan, and mail is not stored after delivery. The code is open source (MIT).
+
+Facts on this page were last reviewed on 25 November 2026.
+
+## Main pages
+
+- [Homepage and domain checker](https://catchall.mx/): what the service does, setup in three steps, privacy, common questions
+- [Record builder](https://catchall.mx/setup/): reads a domain's current DNS and lists the exact records to add, change or delete
+- [Setup guides by DNS provider](https://catchall.mx/guides/): Cloudflare, GoDaddy, Namecheap, Squarespace Domains, Porkbun, IONOS, Hostinger, Amazon Route 53, OVHcloud
+- [Comparison with other forwarders](https://catchall.mx/compare/): ImprovMX, Forward Email, Cloudflare Email Routing
+- [Free email DNS tools](https://catchall.mx/tools/): MX lookup, SPF checker, DKIM checker, DMARC checker
+- [Source code](https://github.com/ntngyl/catchall.mx)
+- [Full reference for AI assistants](https://catchall.mx/llms-full.txt)

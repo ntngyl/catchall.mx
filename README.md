@@ -27,7 +27,7 @@ All settings are TXT records on the domain itself.
 | `catchall-block=old,promo-*` | Refuse mail to these addresses |
 | `catchall-only=hello,billing` | Accept only these addresses and refuse the rest |
 | `catchall-limit=100` | Maximum emails per day |
-| `catchall-size=10` | Maximum message size in MB |
+| `catchall-size=2` | Lower the maximum message size, in MB (the server limit is 5) |
 | `catchall-spam=strict` | Spam filtering: `strict`, `moderate` or `off` |
 
 Per-domain DKIM is optional: publish the key shown at [catchall.mx/dkim/setup](https://catchall.mx/dkim/setup) under the selector `catchall`, and forwarded mail that needs re-signing is signed by your own domain.

@@ -11,12 +11,13 @@ own help pages in November 2026.
 """
 import html
 import os
+import re
 from datetime import date
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = 'https://catchall.mx'
 MX_HOST = 'mail.catchall.mx'
-CSS_VERSION = "2"
+CSS_VERSION = "5"
 esc = html.escape
 
 FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' "
@@ -68,6 +69,7 @@ def page(path, title, description, body, here=''):
             <nav>
                 <a href="/guides/">Setup guides</a>
                 <a href="/tools/">DNS tools</a>
+                <a href="/compare/">Compare</a>
                 <a href="/setup/">Record builder</a>
                 <a href="/report">Report abuse</a>
                 <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source</a>
@@ -433,6 +435,266 @@ def build_guides():
          body, 'guides')
 
 
+# ------------------------------------------------------------------ comparisons
+
+CHECKED = '25 November 2026'
+OURS = {
+    'Price': 'Free. There is no paid plan.',
+    'Account': 'None. Nothing to sign up for.',
+    'Domains': 'No limit',
+    'Addresses': 'Every address at the domain (catch-all), plus up to 25 single-address routes',
+    'Volume': '50 emails a day per domain by default; change it with a DNS record. While the service is small there is also a shared hourly cap per mailbox provider.',
+    'Message size': '5 MB',
+    'Send as your domain': 'No. Forwarding only.',
+    'Setup': '1 MX record and 1 TXT record',
+    'DNS provider': 'Any',
+    'Where settings live': 'In your own DNS, as TXT records. That means the destination address is publicly visible in DNS.',
+    'Confirmation': 'Each destination mailbox confirms once by email',
+    'Mail and logs': 'Mail is not kept after delivery. Mail for an unconfirmed mailbox waits up to 24 hours. Logs are kept 7 days at most.',
+    'Source code': 'Open source (MIT)',
+    'Extras': 'Block and allow lists, optional DKIM signing as your domain, record builder',
+    'Support': 'One small server and no uptime promise. Issues go through GitHub.',
+}
+
+RIVALS = [
+    dict(slug='improvmx', name='ImprovMX',
+         verdict='ImprovMX is a polished, long-running forwarder with a dashboard, an API and paid plans that add sending. CatchAll.mx is smaller and plainer: no account, no paid tier, and every setting is a DNS record.',
+         theirs={
+             'Price': 'Free plan, then Light at $50 a year, Premium at $9 a month, Pro at $24 a month',
+             'Account': 'Required',
+             'Domains': '1 on the free plan; 5 to 100 on paid plans',
+             'Addresses': '25 aliases on the free plan. A catch-all alias is created by default.',
+             'Volume': '500 emails forwarded a day on the free plan',
+             'Message size': 'Up to 50 MB per email',
+             'Send as your domain': 'Yes, over SMTP, on paid plans only',
+             'Setup': '2 MX records and 1 SPF record, then aliases in the dashboard',
+             'DNS provider': 'Any that can hold MX and TXT records',
+             'Where settings live': 'In your ImprovMX account',
+             'Confirmation': 'Not stated on the pages we read',
+             'Mail and logs': 'Email logs are kept 7 days by default; paid plans can extend this up to 180 days',
+             'Source code': 'Not open source',
+             'Extras': 'API on every plan; webhooks and routing rules on paid plans; up to 5 recipients per alias',
+             'Support': 'Email and chat support; 99% uptime guarantee on the free plan',
+         },
+         them=['You want to send mail as your domain, not only receive it.',
+               'You need large attachments, more than 50 emails a day without touching DNS, or a delivery log to look at.',
+               'You want an API, webhooks, or support you can write to.',
+               'You would rather not have your destination address visible in DNS.'],
+         us=['You have several domains and do not want to pay to forward more than one.',
+             'You do not want another account and password for something this small.',
+             'You want settings you can read, copy and version alongside the rest of your DNS.',
+             'You want to be able to read the code that handles your mail.'],
+         leave='Delete the two ImprovMX MX records (<code>mx1.improvmx.com</code> and <code>mx2.improvmx.com</code>). The SPF record that includes <code>spf.improvmx.com</code> is not needed for CatchAll.mx; remove that include unless you send through ImprovMX.',
+         sources=[('Pricing', 'https://improvmx.com/pricing/'), ('Sending and receiving limits', 'https://improvmx.com/guides/sending-receiving-limits/'),
+                  ('Attachments', 'https://improvmx.com/guides/what-are-the-allowed-attachments/'), ('DNS configuration', 'https://improvmx.com/guides/generic-dns-configuration/'),
+                  ('Logging levels', 'https://improvmx.com/guides/privacy-logging-levels/'), ('Why not open source', 'https://improvmx.com/guides/why-are-you-not-open-source/')]),
+    dict(slug='forward-email', name='Forward Email',
+         verdict='Forward Email is the closest thing to CatchAll.mx: its free plan is also configured with DNS TXT records. It does far more on top, including sending, mailboxes, regular expressions and webhooks, with paid plans from $3 a month.',
+         theirs={
+             'Price': 'Free plan, then $3, $9 and $250 a month',
+             'Account': 'Their quick start begins with creating an account',
+             'Domains': 'Unlimited on the free plan',
+             'Addresses': 'Catch-all and single addresses on the free plan, with regular-expression matching',
+             'Volume': 'No inbound limit stated on the pages we read',
+             'Message size': '50 MB attachment limit',
+             'Send as your domain': 'Yes, SMTP on all paid plans. The free plan is forwarding only.',
+             'Setup': '2 MX records and TXT records in the form forward-email=…',
+             'DNS provider': 'Any; they publish steps for many registrars',
+             'Where settings live': 'Free plan: public DNS TXT records, so forwarding addresses are publicly searchable. Paid plans keep them private.',
+             'Confirmation': 'Not stated on the pages we read',
+             'Mail and logs': 'Forwarded mail is handled in memory and not stored. Error logs keep the envelope and headers, not the body.',
+             'Source code': 'Published on GitHub under BUSL-1.1 and MPL-2.0',
+             'Extras': 'Several recipients per address and webhooks on the free plan; IMAP mailboxes and API on paid plans',
+             'Support': 'Priority support from the $9 plan',
+         },
+         them=['You want to send as your domain or have real mailboxes later, without changing provider.',
+               'You need regular expressions, several recipients for one address, or webhooks.',
+               'You want your forwarding addresses hidden from public DNS (their paid plans do this; neither free option does).',
+               'You receive large attachments.'],
+         us=['You want forwarding only, with nothing to sign up for and no plan to outgrow.',
+             'You want the mailbox owner to confirm before any mail is sent to them.',
+             'You prefer plain rules (<code>catchall-route</code>, <code>catchall-block</code>, <code>catchall-only</code>) over regular expressions.',
+             'You want a permissive licence (MIT) on the code.'],
+         leave='Delete the two Forward Email MX records (<code>mx1.forwardemail.net</code> and <code>mx2.forwardemail.net</code>) and the <code>forward-email=</code> TXT records.',
+         sources=[('Pricing', 'https://forwardemail.net/en/pricing'), ('FAQ', 'https://forwardemail.net/en/faq'),
+                  ('Privacy policy', 'https://forwardemail.net/en/privacy'), ('Source code', 'https://github.com/forwardemail/forwardemail.net')]),
+    dict(slug='cloudflare-email-routing', name='Cloudflare Email Routing', short='Cloudflare',
+         verdict='If your domain already uses Cloudflare for DNS, Cloudflare Email Routing is free, has no stated inbound limit and takes larger messages. It only works for domains on Cloudflare DNS, and it is managed from a Cloudflare account. CatchAll.mx works with any DNS provider and needs no account.',
+         theirs={
+             'Price': 'Free for inbound routing. Sending to arbitrary recipients needs the Workers Paid plan.',
+             'Account': 'A Cloudflare account',
+             'Domains': 'Any domain that uses Cloudflare DNS',
+             'Addresses': 'Up to 200 routing rules per domain, including a catch-all rule',
+             'Volume': 'Inbound is listed as unlimited',
+             'Message size': '25 MiB',
+             'Send as your domain': 'Through Workers, an API or SMTP. On the free plan only to verified destination addresses.',
+             'Setup': 'Cloudflare adds the MX, SPF and DKIM records itself; rules are made in the dashboard',
+             'DNS provider': 'Cloudflare DNS only',
+             'Where settings live': 'In your Cloudflare account',
+             'Confirmation': 'Each destination address must be verified; up to 200 per account',
+             'Mail and logs': 'Retention is not stated on the pages we read',
+             'Source code': 'Not open source',
+             'Extras': 'Email Workers for custom processing; one destination per rule unless a Worker forwards to several',
+             'Support': 'Run on Cloudflare\'s network',
+         },
+         them=['Your domain is already on Cloudflare DNS and you are happy to manage mail there.',
+               'You need messages larger than 5 MB or more than a few dozen emails a day.',
+               'You want to process mail in code with Email Workers.',
+               'You want the backing of a large network over a small independent service.'],
+         us=['Your DNS is somewhere else and you do not want to move nameservers just to forward mail.',
+             'You want the same setup to work on every domain you own, whichever provider each one uses.',
+             'You do not want mail routing tied to an account.',
+             'You want mail from senders with weak authentication forwarded with a safe From line; Cloudflare rejects mail that fails both SPF and DKIM.'],
+         leave='Turn off Email Routing for the domain in the Cloudflare dashboard so its MX records are removed, then add the two CatchAll.mx records. Our <a href="/guides/cloudflare/">Cloudflare guide</a> has the exact fields.',
+         sources=[('Pricing', 'https://developers.cloudflare.com/email-service/platform/pricing/'), ('Limits', 'https://developers.cloudflare.com/email-service/platform/limits/'),
+                  ('Getting started', 'https://developers.cloudflare.com/email-service/get-started/route-emails/'), ('Destination addresses', 'https://developers.cloudflare.com/email-service/configuration/destination-addresses/'),
+                  ('Postmaster', 'https://developers.cloudflare.com/email-routing/postmaster/')]),
+]
+
+
+def cmp_table(names, columns):
+    rows = ''.join('<tr><th scope="row">' + esc(k) + '</th>' + ''.join(f'<td>{esc(c[k])}</td>' for c in columns) + '</tr>' for k in OURS)
+    return (f'<div class="cmp-wrap"><table class="cmp cmp{len(names)}"><thead><tr><th></th>' + ''.join(f'<th scope="col">{esc(n)}</th>' for n in names)
+            + f'</tr></thead><tbody>{rows}</tbody></table></div>')
+
+
+def build_compare():
+    crumb = [('catchall.mx', '/'), ('Compare', '/compare/')]
+    for rv in RIVALS:
+        name, short = rv['name'], rv.get('short', rv['name'])
+        body = head(crumb, f'CatchAll.mx and {esc(name)} compared', esc(rv['verdict']))
+        body += sec('Side by side', cmp_table(['CatchAll.mx', name], [OURS, rv['theirs']])
+                    + f'\n                <p class="soft">{esc(short)} details were read from their own website on {CHECKED} and will change. Their site is the authority; the sources are listed below.</p>',
+                    f'Checked {CHECKED}.')
+        body += sec('Which one fits', f'''
+                <h3>{esc(short)} is the better choice if</h3>
+                <ul>{''.join(f'<li>{x}</li>' for x in rv['them'])}</ul>
+                <h3>CatchAll.mx is the better choice if</h3>
+                <ul>{''.join(f'<li>{x}</li>' for x in rv['us'])}</ul>''', 'An honest read.')
+        body += sec(f'Moving from {esc(short)}', f'''
+                <ol>
+                    <li>{rv['leave']}</li>
+                    <li>Add an MX record for <code>{MX_HOST}</code> with priority 10, and a TXT record <code>catchall-forward=you@example.com</code>. The <a href="/setup/">record builder</a> reads your domain and lists exactly what to add and delete.</li>
+                    <li>Check the domain on the <a href="/">homepage</a> and send the confirmation email to your inbox.</li>
+                </ol>
+                <p class="soft">Mail sent during the switch is not lost: sending servers retry for days, and mail that arrives before you confirm waits up to 24 hours.</p>''')
+        body += sec('Sources', links([(f'{short}: {t}', u.split('//')[1], u) for t, u in rv['sources']]
+                                     + [('CatchAll.mx: source code', 'github.com/ntngyl/catchall.mx', 'https://github.com/ntngyl/catchall.mx')]),
+                    'Where each fact comes from.')
+        others = [(f'CatchAll.mx and {q["name"]}', q['verdict'].split('. ')[0] + '.', f'/compare/{q["slug"]}/') for q in RIVALS if q is not rv]
+        body += sec('Other comparisons', links(others))
+        page(f'compare/{rv["slug"]}', f'CatchAll.mx vs {name}: free email forwarding compared',
+             f'An honest comparison of CatchAll.mx and {name} for forwarding email on your own domain: price, limits, accounts, setup, privacy and when each is the better choice.',
+             body)
+
+    body = head(crumb[:1], 'How CatchAll.mx compares',
+                'There are good ways to forward mail for your own domain, and some will suit you better than this one. '
+                'Here is what each offers for free, read from their own websites.')
+    body += sec('The free options', cmp_table(['CatchAll.mx'] + [r.get('short', r['name']) for r in RIVALS], [OURS] + [r['theirs'] for r in RIVALS])
+                + f'\n                <p class="soft">Details of other services were read from their own websites on {CHECKED} and will change. Each comparison page lists its sources.</p>',
+                f'Checked {CHECKED}.').replace('<section class="sec">', '<section class="sec wide">', 1)
+    body += sec('The short version', '''
+                <ul>
+                    <li><b>You want to send mail as your domain too:</b> ImprovMX or Forward Email, on a paid plan.</li>
+                    <li><b>Your DNS is already at Cloudflare and you want no limits to think about:</b> Cloudflare Email Routing.</li>
+                    <li><b>You want forwarding and nothing else, with no account, on any DNS provider:</b> CatchAll.mx.</li>
+                </ul>''')
+    body += sec('One by one', links([(f'CatchAll.mx and {r["name"]}', r['verdict'].split('. ')[0] + '.', f'/compare/{r["slug"]}/') for r in RIVALS]))
+    page('compare', 'CatchAll.mx compared with ImprovMX, Forward Email and Cloudflare Email Routing',
+         'Free email forwarding services compared side by side: CatchAll.mx, ImprovMX, Forward Email and Cloudflare Email Routing. Limits, accounts, setup and privacy, with sources.',
+         body)
+
+
+
+def build_llms():
+    """Plain-text descriptions of the service for AI assistants (llms.txt convention)."""
+    intro = f"""# CatchAll.mx
+
+> CatchAll.mx is a free catch-all email forwarding service for custom domains. It is configured entirely with DNS records: one MX record and one TXT record forward every address at a domain to an existing inbox such as Gmail or Outlook. There is no account, no dashboard and no paid plan, and mail is not stored after delivery. The code is open source (MIT).
+
+Facts on this page were last reviewed on {CHECKED}.
+"""
+    pages = f"""
+## Main pages
+
+- [Homepage and domain checker]({SITE}/): what the service does, setup in three steps, privacy, common questions
+- [Record builder]({SITE}/setup/): reads a domain's current DNS and lists the exact records to add, change or delete
+- [Setup guides by DNS provider]({SITE}/guides/): {", ".join(p["name"] for p in PROVIDERS)}
+- [Comparison with other forwarders]({SITE}/compare/): {", ".join(r["name"] for r in RIVALS)}
+- [Free email DNS tools]({SITE}/tools/): MX lookup, SPF checker, DKIM checker, DMARC checker
+- [Source code](https://github.com/ntngyl/catchall.mx)
+- [Full reference for AI assistants]({SITE}/llms-full.txt)
+"""
+    with open(os.path.join(ROOT, 'llms.txt'), 'w') as f:
+        f.write(intro + pages)
+
+    facts = '\n'.join(f'- **{k}:** {v}' for k, v in OURS.items())
+    rivals = ''
+    for r in RIVALS:
+        rivals += f'\n### CatchAll.mx compared with {r["name"]}\n\n{r["verdict"]}\n\n'
+        rivals += f'{r["name"]} is the better choice if:\n' + ''.join('- ' + re.sub(r'<[^>]+>', '', x) + '\n' for x in r['them'])
+        rivals += '\nCatchAll.mx is the better choice if:\n' + ''.join('- ' + re.sub(r'<[^>]+>', '', x) + '\n' for x in r['us'])
+        rivals += f'\nDetails: {SITE}/compare/{r["slug"]}/\n'
+    full = intro + f"""
+## How to set it up
+
+1. At the domain's DNS provider, delete any existing MX records. A domain's mail can go to only one service.
+2. Add an MX record on the domain itself (host `@`): value `{MX_HOST}`, priority 10.
+3. Add a TXT record on the domain itself (host `@`): value `catchall-forward=you@example.com`, using the inbox that should receive the mail.
+4. Open {SITE}/ and check the domain. When both records are found, a button sends a confirmation email to that inbox. Click the link in it. Forwarding starts immediately.
+
+The confirmation exists so that nobody can point a domain at someone else's mailbox. Each destination mailbox confirms once per domain. The link is valid for 24 hours. Mail that arrives before confirmation is held for up to 24 hours and delivered when the mailbox confirms.
+
+To stop using the service, delete the two records. There is no account to close.
+
+## All DNS records
+
+Every setting is a TXT record on the domain itself.
+
+| Record | Meaning |
+|---|---|
+| `catchall-forward=you@example.com` | Required. Default destination for every address at the domain. |
+| `catchall-route=sales:team@example.com` | Send one address to a different mailbox. `*` works as a wildcard, for example `shop-*:orders@example.com`. Up to 25 routes. |
+| `catchall-block=old,promo-*` | Refuse mail to these addresses. Senders get a "550 address not accepted" reply. |
+| `catchall-only=hello,billing` | Accept only the listed addresses and refuse all others. |
+| `catchall-limit=200` | Emails forwarded per day for the domain. Default 50. |
+| `catchall-spam=strict` | Spam filtering level: `strict`, `moderate` (default) or `off`. |
+| `catchall-size=2` | Lower the largest accepted message, in MB. Default and maximum 5. |
+
+Order of evaluation for an incoming address: block list, then allow list, then single-address routes, then the default destination. A `+tag` in the address is ignored when matching.
+
+Optional DKIM: publishing one TXT record at `catchall._domainkey.<domain>` (the value is shown at {SITE}/dkim/setup) lets forwarded mail that needs re-signing be signed by the user's own domain.
+
+## Facts and limits
+
+{facts}
+
+## How forwarded mail is handled
+
+- If the original message has a valid DKIM signature from its own From domain (mail from Gmail, Outlook, Yahoo and most companies does), it is forwarded unchanged and the sender appears exactly as sent.
+- If it has no such signature, forwarding it unchanged would fail authentication at the receiving mailbox. The From line is then rewritten to `"Sender Name - user at example.com via CatchAll" <forwarded@...>`, the original sender is put in Reply-To so replies reach the right person, and the message is DKIM-signed by CatchAll.mx or by the user's own domain if DKIM is set up.
+- Mail that fails the sender's own DMARC policy is not vouched for.
+- Sending mail as the domain is not possible. The service only receives and forwards.
+
+## Privacy
+
+A message arrives, the domain's DNS is read to find the destination, the message passes a spam filter on the same server, is forwarded, and the copy is deleted once the destination provider accepts it. Message content is not sent to any third party. Stored: confirmed status per domain (mailboxes as fingerprints), a daily count per domain, delivery logs for 7 days, mail waiting for an unconfirmed mailbox for at most 24 hours, and suspected forgeries for at most 7 days. The website has no analytics and no cookies.
+
+## Who it suits and who it does not
+
+Suits: people with one or several custom domains who want mail to any address delivered to an inbox they already use; developers and side projects; anyone who wants a separate address per shop or newsletter to trace leaks.
+
+Does not suit: anyone who needs to send as the domain, needs attachments over 5 MB, needs high daily volume, wants a delivery dashboard or guaranteed uptime, or does not want the destination address visible in public DNS.
+
+## Alternatives
+{rivals}
+## Setup guides for specific DNS providers
+
+""" + ''.join(f'- {p["name"]}: {SITE}/guides/{p["slug"]}/\n' for p in PROVIDERS) + pages
+    with open(os.path.join(ROOT, 'llms-full.txt'), 'w') as f:
+        f.write(full)
+
+
 def build_sitemap():
     today = date.today().isoformat()
     urls = [''] + ['setup/'] + [p + '/' for p in written]
@@ -443,11 +705,18 @@ def build_sitemap():
     with open(os.path.join(ROOT, 'sitemap.xml'), 'w') as f:
         f.write(xml)
     with open(os.path.join(ROOT, 'robots.txt'), 'w') as f:
-        f.write(f'User-agent: *\nDisallow: /api/\nDisallow: /verify/\nDisallow: /quarantine\n\nSitemap: {SITE}/sitemap.xml\n')
+        ai = ''.join(f'User-agent: {b}\n' for b in ('GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-SearchBot',
+                                                     'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Google-Extended',
+                                                     'Applebot-Extended', 'CCBot', 'Bingbot'))
+        rules = 'Allow: /\nDisallow: /api/\nDisallow: /verify/\nDisallow: /quarantine\n'
+        f.write(f'# AI assistants and search engines are welcome. A plain-text summary is at /llms.txt\n'
+                f'{ai}{rules}\nUser-agent: *\n{rules}\nSitemap: {SITE}/sitemap.xml\n')
+    build_llms()
 
 
 if __name__ == '__main__':
     build_tools()
     build_guides()
+    build_compare()
     build_sitemap()
     print(f'{len(written)} pages written:', ', '.join(written))

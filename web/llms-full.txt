@@ -1,0 +1,147 @@
+# CatchAll.mx
+
+> CatchAll.mx is a free catch-all email forwarding service for custom domains. It is configured entirely with DNS records: one MX record and one TXT record forward every address at a domain to an existing inbox such as Gmail or Outlook. There is no account, no dashboard and no paid plan, and mail is not stored after delivery. The code is open source (MIT).
+
+Facts on this page were last reviewed on 25 November 2026.
+
+## How to set it up
+
+1. At the domain's DNS provider, delete any existing MX records. A domain's mail can go to only one service.
+2. Add an MX record on the domain itself (host `@`): value `mail.catchall.mx`, priority 10.
+3. Add a TXT record on the domain itself (host `@`): value `catchall-forward=you@example.com`, using the inbox that should receive the mail.
+4. Open https://catchall.mx/ and check the domain. When both records are found, a button sends a confirmation email to that inbox. Click the link in it. Forwarding starts immediately.
+
+The confirmation exists so that nobody can point a domain at someone else's mailbox. Each destination mailbox confirms once per domain. The link is valid for 24 hours. Mail that arrives before confirmation is held for up to 24 hours and delivered when the mailbox confirms.
+
+To stop using the service, delete the two records. There is no account to close.
+
+## All DNS records
+
+Every setting is a TXT record on the domain itself.
+
+| Record | Meaning |
+|---|---|
+| `catchall-forward=you@example.com` | Required. Default destination for every address at the domain. |
+| `catchall-route=sales:team@example.com` | Send one address to a different mailbox. `*` works as a wildcard, for example `shop-*:orders@example.com`. Up to 25 routes. |
+| `catchall-block=old,promo-*` | Refuse mail to these addresses. Senders get a "550 address not accepted" reply. |
+| `catchall-only=hello,billing` | Accept only the listed addresses and refuse all others. |
+| `catchall-limit=200` | Emails forwarded per day for the domain. Default 50. |
+| `catchall-spam=strict` | Spam filtering level: `strict`, `moderate` (default) or `off`. |
+| `catchall-size=2` | Lower the largest accepted message, in MB. Default and maximum 5. |
+
+Order of evaluation for an incoming address: block list, then allow list, then single-address routes, then the default destination. A `+tag` in the address is ignored when matching.
+
+Optional DKIM: publishing one TXT record at `catchall._domainkey.<domain>` (the value is shown at https://catchall.mx/dkim/setup) lets forwarded mail that needs re-signing be signed by the user's own domain.
+
+## Facts and limits
+
+- **Price:** Free. There is no paid plan.
+- **Account:** None. Nothing to sign up for.
+- **Domains:** No limit
+- **Addresses:** Every address at the domain (catch-all), plus up to 25 single-address routes
+- **Volume:** 50 emails a day per domain by default; change it with a DNS record. While the service is small there is also a shared hourly cap per mailbox provider.
+- **Message size:** 5 MB
+- **Send as your domain:** No. Forwarding only.
+- **Setup:** 1 MX record and 1 TXT record
+- **DNS provider:** Any
+- **Where settings live:** In your own DNS, as TXT records. That means the destination address is publicly visible in DNS.
+- **Confirmation:** Each destination mailbox confirms once by email
+- **Mail and logs:** Mail is not kept after delivery. Mail for an unconfirmed mailbox waits up to 24 hours. Logs are kept 7 days at most.
+- **Source code:** Open source (MIT)
+- **Extras:** Block and allow lists, optional DKIM signing as your domain, record builder
+- **Support:** One small server and no uptime promise. Issues go through GitHub.
+
+## How forwarded mail is handled
+
+- If the original message has a valid DKIM signature from its own From domain (mail from Gmail, Outlook, Yahoo and most companies does), it is forwarded unchanged and the sender appears exactly as sent.
+- If it has no such signature, forwarding it unchanged would fail authentication at the receiving mailbox. The From line is then rewritten to `"Sender Name - user at example.com via CatchAll" <forwarded@...>`, the original sender is put in Reply-To so replies reach the right person, and the message is DKIM-signed by CatchAll.mx or by the user's own domain if DKIM is set up.
+- Mail that fails the sender's own DMARC policy is not vouched for.
+- Sending mail as the domain is not possible. The service only receives and forwards.
+
+## Privacy
+
+A message arrives, the domain's DNS is read to find the destination, the message passes a spam filter on the same server, is forwarded, and the copy is deleted once the destination provider accepts it. Message content is not sent to any third party. Stored: confirmed status per domain (mailboxes as fingerprints), a daily count per domain, delivery logs for 7 days, mail waiting for an unconfirmed mailbox for at most 24 hours, and suspected forgeries for at most 7 days. The website has no analytics and no cookies.
+
+## Who it suits and who it does not
+
+Suits: people with one or several custom domains who want mail to any address delivered to an inbox they already use; developers and side projects; anyone who wants a separate address per shop or newsletter to trace leaks.
+
+Does not suit: anyone who needs to send as the domain, needs attachments over 5 MB, needs high daily volume, wants a delivery dashboard or guaranteed uptime, or does not want the destination address visible in public DNS.
+
+## Alternatives
+
+### CatchAll.mx compared with ImprovMX
+
+ImprovMX is a polished, long-running forwarder with a dashboard, an API and paid plans that add sending. CatchAll.mx is smaller and plainer: no account, no paid tier, and every setting is a DNS record.
+
+ImprovMX is the better choice if:
+- You want to send mail as your domain, not only receive it.
+- You need large attachments, more than 50 emails a day without touching DNS, or a delivery log to look at.
+- You want an API, webhooks, or support you can write to.
+- You would rather not have your destination address visible in DNS.
+
+CatchAll.mx is the better choice if:
+- You have several domains and do not want to pay to forward more than one.
+- You do not want another account and password for something this small.
+- You want settings you can read, copy and version alongside the rest of your DNS.
+- You want to be able to read the code that handles your mail.
+
+Details: https://catchall.mx/compare/improvmx/
+
+### CatchAll.mx compared with Forward Email
+
+Forward Email is the closest thing to CatchAll.mx: its free plan is also configured with DNS TXT records. It does far more on top, including sending, mailboxes, regular expressions and webhooks, with paid plans from $3 a month.
+
+Forward Email is the better choice if:
+- You want to send as your domain or have real mailboxes later, without changing provider.
+- You need regular expressions, several recipients for one address, or webhooks.
+- You want your forwarding addresses hidden from public DNS (their paid plans do this; neither free option does).
+- You receive large attachments.
+
+CatchAll.mx is the better choice if:
+- You want forwarding only, with nothing to sign up for and no plan to outgrow.
+- You want the mailbox owner to confirm before any mail is sent to them.
+- You prefer plain rules (catchall-route, catchall-block, catchall-only) over regular expressions.
+- You want a permissive licence (MIT) on the code.
+
+Details: https://catchall.mx/compare/forward-email/
+
+### CatchAll.mx compared with Cloudflare Email Routing
+
+If your domain already uses Cloudflare for DNS, Cloudflare Email Routing is free, has no stated inbound limit and takes larger messages. It only works for domains on Cloudflare DNS, and it is managed from a Cloudflare account. CatchAll.mx works with any DNS provider and needs no account.
+
+Cloudflare Email Routing is the better choice if:
+- Your domain is already on Cloudflare DNS and you are happy to manage mail there.
+- You need messages larger than 5 MB or more than a few dozen emails a day.
+- You want to process mail in code with Email Workers.
+- You want the backing of a large network over a small independent service.
+
+CatchAll.mx is the better choice if:
+- Your DNS is somewhere else and you do not want to move nameservers just to forward mail.
+- You want the same setup to work on every domain you own, whichever provider each one uses.
+- You do not want mail routing tied to an account.
+- You want mail from senders with weak authentication forwarded with a safe From line; Cloudflare rejects mail that fails both SPF and DKIM.
+
+Details: https://catchall.mx/compare/cloudflare-email-routing/
+
+## Setup guides for specific DNS providers
+
+- Cloudflare: https://catchall.mx/guides/cloudflare/
+- GoDaddy: https://catchall.mx/guides/godaddy/
+- Namecheap: https://catchall.mx/guides/namecheap/
+- Squarespace Domains: https://catchall.mx/guides/squarespace/
+- Porkbun: https://catchall.mx/guides/porkbun/
+- IONOS: https://catchall.mx/guides/ionos/
+- Hostinger: https://catchall.mx/guides/hostinger/
+- Amazon Route 53: https://catchall.mx/guides/route53/
+- OVHcloud: https://catchall.mx/guides/ovh/
+
+## Main pages
+
+- [Homepage and domain checker](https://catchall.mx/): what the service does, setup in three steps, privacy, common questions
+- [Record builder](https://catchall.mx/setup/): reads a domain's current DNS and lists the exact records to add, change or delete
+- [Setup guides by DNS provider](https://catchall.mx/guides/): Cloudflare, GoDaddy, Namecheap, Squarespace Domains, Porkbun, IONOS, Hostinger, Amazon Route 53, OVHcloud
+- [Comparison with other forwarders](https://catchall.mx/compare/): ImprovMX, Forward Email, Cloudflare Email Routing
+- [Free email DNS tools](https://catchall.mx/tools/): MX lookup, SPF checker, DKIM checker, DMARC checker
+- [Source code](https://github.com/ntngyl/catchall.mx)
+- [Full reference for AI assistants](https://catchall.mx/llms-full.txt)

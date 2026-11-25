@@ -32,6 +32,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M8 12l8 6 8-6' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='8' y='10' width='16' height='12' rx='2' fill='none' stroke='%23ffffff' stroke-width='2.4'/%3E%3C/svg%3E">
 
     <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "CatchAll.mx", "url": "https://catchall.mx/", "applicationCategory": "CommunicationApplication", "operatingSystem": "Any", "description": "Free catch-all email forwarding for your own domain, configured with two DNS records. No account, and mail is not kept after delivery.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "sameAs": ["https://github.com/ntngyl/catchall.mx"]}</script>
+    <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is it actually free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, and it stays free. There is no paid plan hiding behind it. The daily limit keeps one busy domain from slowing everyone else down."}}, {"@type": "Question", "name": "Why do some forwarded emails say \"via CatchAll\" next to the sender?", "acceptedAnswer": {"@type": "Answer", "text": "Gmail and others reject forwarded mail that can't prove where it came from. If the original sender signed their message, we pass it on untouched. If they didn't, we send it under our own address, keep the real sender's name visible and put their address in Reply-To, so it arrives and your reply still goes to the right person."}}, {"@type": "Question", "name": "Something landed in spam.", "acceptedAnswer": {"@type": "Answer", "text": "Mark it \"Not spam\" once. Your provider learns quickly from that. Adding forwarded@catchall.mx and verify@catchall.mx to your contacts helps too."}}, {"@type": "Question", "name": "What if I change the forwarding address?", "acceptedAnswer": {"@type": "Answer", "text": "The new mailbox has to confirm before it receives anything. Check your domain again and send the confirmation from here. Mail that arrives in the meantime waits up to 24 hours."}}, {"@type": "Question", "name": "Can I send mail from my domain?", "acceptedAnswer": {"@type": "Answer", "text": "No. This only receives. Replies go out from your own mailbox, under that mailbox's address."}}, {"@type": "Question", "name": "My domain already has mailboxes somewhere.", "acceptedAnswer": {"@type": "Answer", "text": "Then think before you switch. A domain's mail goes to one place, so pointing the MX record here moves all of it to forwarding, and those mailboxes stop getting new mail."}}, {"@type": "Question", "name": "Someone is using this to send me mail I never asked for.", "acceptedAnswer": {"@type": "Answer", "text": "Click \"Block\" in the confirmation email, or report the domain. Domains and mailboxes used for abuse get blocked."}}]}</script>
     <style>
         :root {
             --bg: #ffffff; --ink: #0a0a0a; --soft: #5c6068; --faint: #8b9099; --line: #e7e8eb; --wash: #f6f6f7;
@@ -271,7 +272,7 @@
                         <tbody>
                             <tr><td><code>catchall-limit=200</code></td><td>50</td><td>Emails forwarded per day.</td></tr>
                             <tr><td><code>catchall-spam=strict</code></td><td>moderate</td><td>Spam filter: strict, moderate or off.</td></tr>
-                            <tr><td><code>catchall-size=10</code></td><td>5</td><td>Largest message we accept, in MB.</td></tr>
+                            <tr><td><code>catchall-size=2</code></td><td>5</td><td>Lower the largest message we accept, in MB. 5 is the most.</td></tr>
                         </tbody>
                     </table>
                     <p>Writing these by hand gets fiddly. The <a href="/setup/">record builder</a> asks what you want, looks at what your domain has now, and lists what to add, change or delete in your DNS provider's own wording. It also sets up DKIM, so forwarded mail is signed by your domain.</p>
@@ -354,6 +355,7 @@
             <nav>
                 <a href="/guides/">Setup guides</a>
                 <a href="/tools/">DNS tools</a>
+                <a href="/compare/">Compare</a>
                 <a href="/setup/">Record builder</a>
                 <a href="/dkim/setup">DKIM</a>
                 <a href="/report">Report abuse</a>
