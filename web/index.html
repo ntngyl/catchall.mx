@@ -224,6 +224,7 @@
             <a class="brand" href="/">catchall<span>.mx</span></a>
             <nav class="nav-links">
                 <a href="#setup">Setup</a>
+                <a href="/setup/">Record builder</a>
                 <a href="#rules">Rules</a>
                 <a href="#privacy">Privacy</a>
                 <a href="#faq">FAQ</a>
@@ -255,7 +256,7 @@
                     <button class="btn" id="check-btn" onclick="checkDNS()">Check DNS</button>
                 </div>
                 <div id="dns-results" aria-live="polite"></div>
-                <p class="hint">We only read your public DNS records. Nothing is saved.</p>
+                <p class="hint">We only read your public DNS records. Nothing is saved. Want the exact records for your setup? <a id="builder-link" href="/setup/" style="color: var(--mint);">Open the record builder →</a></p>
             </div>
         </div>
     </section>
@@ -300,7 +301,7 @@
         <div class="wrap">
             <div class="kicker">Rules</div>
             <h2 class="title">Control each address, still without an account.</h2>
-            <p class="intro">Optional TXT records decide what happens to individual addresses. Use the part before the @, and separate several entries with commas.</p>
+            <p class="intro">Optional TXT records decide what happens to individual addresses. Use the part before the @, and separate several entries with commas. Prefer not to write them by hand? The <a href="/setup/" style="color: var(--accent); font-weight: 600;">record builder</a> writes them for you.</p>
             <div class="grid3">
                 <div class="card">
                     <h3>Route</h3>
@@ -420,8 +421,8 @@
         <div class="wrap">
             <div class="cta">
                 <h2>Two DNS records from now, you are done.</h2>
-                <p>Add them, then check your domain. We will tell you exactly what is missing.</p>
-                <a class="btn" href="#check" onclick="setTimeout(function(){document.getElementById('domain-input').focus()}, 400)">Check my domain</a>
+                <p>Tell the record builder what you want. It lists exactly what to add, change or remove.</p>
+                <a class="btn" href="/setup/">Build my records</a>
             </div>
         </div>
     </section>
@@ -430,6 +431,7 @@
         <div class="wrap">
             <div><span class="mono" style="color: var(--ink); font-weight: 600;">catchall.mx</span> &nbsp;·&nbsp; Email forwarding configured in DNS</div>
             <nav>
+                <a href="/setup/">Record builder</a>
                 <a href="/dkim/setup">DKIM setup</a>
                 <a href="/report">Report abuse</a>
                 <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source code</a>
@@ -514,6 +516,9 @@
                 }
 
                 resultsDiv.innerHTML = html;
+                if (data.domain && !data.error) {
+                    document.getElementById('builder-link').href = '/setup/?domain=' + encodeURIComponent(data.domain);
+                }
 
             } catch (error) {
                 resultsDiv.innerHTML = item('error', 'Could not run the check. Please try again in a moment.');

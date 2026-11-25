@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS record builder - CatchAll.mx</title>
+    <meta name="description" content="Choose how your domain's email should be forwarded and get the exact DNS records to add, change or remove, based on what your domain has today.">
+    <link rel="canonical" href="https://catchall.mx/setup/">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314161a'/%3E%3Cpath d='M7 11l9 7 9-7' fill='none' stroke='%234fd1a1' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7 21h18' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede7; --ink: #14161a; --muted: #5b626e;
+            --line: #e2dfd6; --accent: #0d6b4e; --accent-soft: #e3f1eb; --warn: #8a5200; --warn-soft: #fbf0d9;
+            --bad: #b3261e; --bad-soft: #fbe9e7; --hero: #101216; --hero-ink: #f1f2f4; --hero-muted: #a2a9b4;
+            --hero-line: #262a31; --mint: #4fd1a1;
+            --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            --radius: 14px; --shadow: 0 1px 2px rgba(20,22,26,.04), 0 8px 28px rgba(20,22,26,.06);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0d0f12; --surface: #15181d; --surface-2: #1b1f25; --ink: #eceef1; --muted: #99a1ad;
+                --line: #262a31; --accent: #4fd1a1; --accent-soft: #12281f; --warn: #e5b45a; --warn-soft: #2a2110;
+                --bad: #ff8a80; --bad-soft: #2c1513; --hero: #090a0c;
+                --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.35);
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body { font-family: var(--sans); background: var(--bg); color: var(--ink); line-height: 1.55; font-size: 16px; -webkit-font-smoothing: antialiased; }
+        .mono, code { font-family: var(--mono); font-size: .92em; }
+        .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+        :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 6px; }
+
+        .nav { position: sticky; top: 0; z-index: 20; background: rgba(16,18,22,.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--hero-line); }
+        .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+        .brand { font-family: var(--mono); font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--hero-ink); text-decoration: none; }
+        .brand span { color: var(--mint); }
+        .nav a.back { color: var(--hero-muted); text-decoration: none; font-size: 14.5px; }
+        .nav a.back:hover { color: var(--hero-ink); }
+
+        .head { background: var(--hero); color: var(--hero-ink); padding: 48px 0 44px; }
+        .head h1 { font-size: clamp(30px, 4vw, 42px); letter-spacing: -.035em; line-height: 1.08; }
+        .head p { color: var(--hero-muted); font-size: 17.5px; max-width: 640px; margin-top: 12px; }
+        .load { display: flex; gap: 8px; margin-top: 26px; max-width: 560px; }
+        .load input { flex: 1; min-width: 0; padding: 13px 14px; background: #0c0e11; border: 1px solid var(--hero-line); border-radius: 10px; font: 15px var(--mono); color: var(--hero-ink); }
+        .load input:focus { outline: none; border-color: var(--mint); box-shadow: 0 0 0 3px rgba(79,209,161,.18); }
+        .btn { padding: 13px 18px; background: var(--mint); color: #08110d; border: 0; border-radius: 10px; font: 600 15px var(--sans); cursor: pointer; white-space: nowrap; }
+        .btn:hover { filter: brightness(1.08); }
+        .btn:disabled { opacity: .55; cursor: progress; }
+        #load-status { margin-top: 12px; font-size: 14.5px; color: var(--hero-muted); min-height: 22px; }
+        #load-status b { color: var(--hero-ink); font-weight: 600; }
+        #load-status.bad { color: #ff8a80; }
+
+        main { padding: 36px 0 80px; }
+        .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 24px; align-items: start; }
+        .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+        .panel > h2 { font-size: 13px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); padding: 18px 22px 0; }
+        .sec { padding: 18px 22px 20px; border-top: 1px solid var(--line); }
+        .sec:first-of-type { border-top: 0; }
+        .sec h3 { font-size: 16.5px; letter-spacing: -.01em; }
+        .sec p.help { font-size: 14px; color: var(--muted); margin: 3px 0 12px; }
+        label.lbl { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 5px; }
+        input.f, select.f { width: 100%; padding: 11px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; font: 14.5px var(--mono); color: var(--ink); }
+        input.f:focus, select.f:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,107,78,.14); }
+        input.f.invalid { border-color: var(--bad); }
+        .route { display: grid; grid-template-columns: minmax(0, .8fr) auto minmax(0, 1.2fr) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .route .at { font: 13px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+        .x { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
+        .x:hover { color: var(--bad); border-color: var(--bad); }
+        .ghost { background: transparent; border: 1px dashed var(--line); color: var(--ink); border-radius: 9px; padding: 9px 14px; font: 600 14px var(--sans); cursor: pointer; }
+        .ghost:hover { border-color: var(--accent); color: var(--accent); }
+        .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; cursor: pointer; }
+        .check input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--accent); }
+        .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .err { color: var(--bad); font-size: 13px; margin-top: 5px; display: none; }
+        .err.on { display: block; }
+
+        .out { position: sticky; top: 76px; }
+        .out-head { padding: 18px 22px; border-bottom: 1px solid var(--line); }
+        .out-head h3 { font-size: 19px; letter-spacing: -.02em; }
+        .out-head p { font-size: 14.5px; color: var(--muted); margin-top: 4px; }
+        #steps { padding: 6px 22px 22px; }
+        .group { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 0 10px; display: flex; align-items: center; gap: 8px; }
+        .group i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+        .group.add i { background: var(--accent); } .group.del i { background: var(--bad); } .group.chg i { background: #c98a12; }
+        .step { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; overflow: hidden; background: var(--bg); }
+        .step-top { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 14.5px; }
+        .n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--bg); font: 600 12px/24px var(--mono); text-align: center; }
+        .tag { font: 600 11px var(--mono); letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; }
+        .tag.add { background: var(--accent-soft); color: var(--accent); } .tag.del { background: var(--bad-soft); color: var(--bad); }
+        .tag.chg { background: var(--warn-soft); color: var(--warn); } .tag.ok { background: var(--surface-2); color: var(--muted); }
+        .fields { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; border-top: 1px solid var(--line); font-size: 13.5px; }
+        .fields > div { padding: 8px 12px; border-top: 1px solid var(--line); display: flex; align-items: center; }
+        .fields > div:nth-child(-n+3) { border-top: 0; }
+        .fields .k { font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+        .fields .v { font-family: var(--mono); overflow-wrap: anywhere; word-break: break-all; }
+        .fields .v.old { color: var(--muted); text-decoration: line-through; }
+        .copy { font: 500 11.5px var(--mono); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+        .copy:hover { color: var(--ink); } .copy.done { color: var(--accent); border-color: var(--accent); }
+        .done-box { margin-top: 18px; padding: 16px; border-radius: 12px; background: var(--accent-soft); color: var(--ink); font-size: 15px; }
+        .done-box b { color: var(--accent); }
+        .after { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--muted); }
+        .after ol { margin: 8px 0 0 18px; } .after li { margin-bottom: 6px; } .after b { color: var(--ink); }
+        .after .btn2 { margin-top: 12px; background: var(--ink); color: var(--bg); border: 0; border-radius: 9px; padding: 10px 16px; font: 600 14px var(--sans); cursor: pointer; }
+        .empty { padding: 26px 0 8px; color: var(--muted); font-size: 15px; }
+        .warnbox { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; }
+        details.kept { margin-top: 14px; font-size: 14px; color: var(--muted); }
+        details.kept summary { cursor: pointer; font-weight: 600; }
+        details.kept code { display: block; margin-top: 6px; overflow-wrap: anywhere; }
+
+        @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } .out { position: static; } }
+        @media (max-width: 560px) {
+            .wrap { padding: 0 16px; } .load { flex-direction: column; } .three { grid-template-columns: 1fr; }
+            .route { grid-template-columns: minmax(0, 1fr) auto; } .route .at { display: none; }
+            .route input:nth-of-type(2) { grid-column: 1; }
+            .sec, .out-head { padding-left: 16px; padding-right: 16px; } #steps { padding: 6px 16px 18px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="nav">
+        <div class="wrap">
+            <a class="brand" href="/">catchall<span>.mx</span></a>
+            <a class="back" href="/">← Back to home</a>
+        </div>
+    </header>
+
+    <section class="head">
+        <div class="wrap">
+            <h1>Build your DNS records</h1>
+            <p>Choose what should happen to your mail. We compare it with what your domain has today and list exactly which records to add, change or remove.</p>
+            <div class="load">
+                <input id="domain" type="text" placeholder="yourdomain.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Your domain">
+                <button class="btn" id="load-btn">Load current records</button>
+            </div>
+            <div id="load-status" aria-live="polite">Start with your domain, so the instructions fit what is already there.</div>
+        </div>
+    </section>
+
+    <main>
+        <div class="wrap cols">
+            <div class="panel">
+                <h2>What you want</h2>
+                <div class="sec">
+                    <h3>Where should mail go?</h3>
+                    <p class="help">Everything sent to any address at your domain is forwarded here.</p>
+                    <input class="f" id="forward" type="email" placeholder="you@example.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Forward to">
+                    <div class="err" id="forward-err"></div>
+                </div>
+                <div class="sec">
+                    <h3>Send some addresses elsewhere</h3>
+                    <p class="help">Optional. For example, <span class="mono">billing</span> to your accountant. Each mailbox confirms once before it receives mail.</p>
+                    <div id="routes"></div>
+                    <button class="ghost" id="add-route" type="button">+ Add a route</button>
+                    <div class="err" id="routes-err"></div>
+                </div>
+                <div class="sec">
+                    <h3>Block addresses</h3>
+                    <p class="help">Optional. Mail to these is refused. Separate with commas; <span class="mono">*</span> matches anything, so <span class="mono">news-*</span> covers a family.</p>
+                    <input class="f" id="block" type="text" placeholder="oldshop, news-*" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Blocked addresses">
+                    <div class="err" id="block-err"></div>
+                </div>
+                <div class="sec">
+                    <h3>Accept only listed addresses</h3>
+                    <label class="check"><input type="checkbox" id="only-on"> <span>Refuse mail to every address I have not listed. Good against spam sent to guessed addresses.</span></label>
+                    <div id="only-box" style="display:none">
+                        <label class="lbl" for="only">Addresses to accept</label>
+                        <input class="f" id="only" type="text" placeholder="info, sales, me" autocomplete="off" autocapitalize="none" spellcheck="false">
+                        <p class="help" style="margin-top:6px">Routed addresses are accepted automatically.</p>
+                        <div class="err" id="only-err"></div>
+                    </div>
+                </div>
+                <div class="sec">
+                    <h3>Limits and spam filtering</h3>
+                    <p class="help">Leave the defaults unless you need something else.</p>
+                    <div class="three">
+                        <div><label class="lbl" for="limit">Emails per day</label><input class="f" id="limit" type="number" min="1" max="5000" placeholder="50"></div>
+                        <div><label class="lbl" for="spam">Spam filter</label><select class="f" id="spam"><option value="moderate">Moderate</option><option value="strict">Strict</option><option value="off">Off</option></select></div>
+                        <div><label class="lbl" for="size">Max size (MB)</label><input class="f" id="size" type="number" min="1" max="25" placeholder="5"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel out">
+                <div class="out-head">
+                    <h3 id="out-title">Your instructions</h3>
+                    <p id="out-sub">Fill in where mail should go and the steps appear here.</p>
+                </div>
+                <div id="steps"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g,
+            (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        const MX = 'mail.catchall.mx';
+        const EMAIL = /^[^@\s"<>,;:]+@([a-z0-9-]+\.)+[a-z0-9-]{2,63}$/i;
+        const NAME = /^[a-z0-9._*+-]{1,64}$/;
+        const DEFAULTS = {limit: '50', spam: 'moderate', size: '5'};
+
+        let domain = '';          // loaded domain, '' until loaded
+        let current = null;       // {mx: [...], txt: [...]} from the API, null until loaded
+
+        function cleanDomain(raw) {
+            let d = (raw || '').trim().toLowerCase().replace(/^[a-z]+:\/\//, '').split('/')[0].split('?')[0];
+            if (d.includes('@')) d = d.split('@').pop();
+            d = d.split(':')[0].replace(/^\.+|\.+$/g, '');
+            if (d.startsWith('www.') && d.split('.').length > 2) d = d.slice(4);
+            return d;
+        }
+        const names = (v) => v.split(/[,;\s]+/).map((x) => x.trim().toLowerCase().split('@')[0]).filter(Boolean);
+
+        // ---- form: routes
+        function addRoute(name, target) {
+            const row = document.createElement('div');
+            row.className = 'route';
+            row.innerHTML = `<input class="f r-name" type="text" placeholder="billing" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Address name">
+                <span class="at"></span>
+                <input class="f r-target" type="email" placeholder="accounts@example.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Deliver to">
+                <button class="x" type="button" aria-label="Remove route">×</button>`;
+            row.querySelector('.r-name').value = name || '';
+            row.querySelector('.r-target').value = target || '';
+            row.querySelector('.at').textContent = '@' + (domain || 'yourdomain.com') + ' →';
+            row.querySelector('.x').onclick = () => { row.remove(); render(); };
+            row.querySelectorAll('input').forEach((i) => i.addEventListener('input', render));
+            $('routes').appendChild(row);
+        }
+
+        // ---- read + validate the form
+        function readForm() {
+            const errs = {forward: '', routes: '', block: '', only: ''};
+            const dom = domain || cleanDomain($('domain').value);
+            const onDomain = (addr) => {
+                const d = addr.split('@').pop().toLowerCase();
+                return dom && (d === dom || d.endsWith('.' + dom));
+            };
+
+            const forward = $('forward').value.trim();
+            if (forward && !EMAIL.test(forward)) errs.forward = 'That is not a valid email address.';
+            else if (forward && onDomain(forward)) errs.forward = 'Use a mailbox on another domain, or mail would loop back to us.';
+
+            const routes = [];
+            document.querySelectorAll('#routes .route').forEach((row) => {
+                const n = row.querySelector('.r-name').value.trim().toLowerCase().split('@')[0];
+                const t = row.querySelector('.r-target').value.trim();
+                if (!n && !t) return;
+                if (!NAME.test(n)) errs.routes = 'Route names can use letters, numbers, dots, hyphens and *.';
+                else if (!EMAIL.test(t)) errs.routes = `Enter a valid destination for "${n}".`;
+                else if (onDomain(t)) errs.routes = `"${n}" points back to your own domain. Use a mailbox elsewhere.`;
+                else if (routes.some((r) => r[0] === n)) errs.routes = `"${n}" is listed twice.`;
+                else routes.push([n, t]);
+            });
+
+            const block = names($('block').value);
+            if (block.some((n) => !NAME.test(n))) errs.block = 'Use only the part before the @: letters, numbers, dots, hyphens and *.';
+            const onlyOn = $('only-on').checked;
+            const only = onlyOn ? names($('only').value) : [];
+            if (only.some((n) => !NAME.test(n))) errs.only = 'Use only the part before the @: letters, numbers, dots, hyphens and *.';
+            else if (onlyOn && !only.length && !routes.length) errs.only = 'List at least one address, or every message would be refused.';
+
+            const num = (id, def) => { const v = $(id).value.trim(); return /^\d+$/.test(v) ? String(parseInt(v, 10)) : def; };
+            return {forward, routes, block, only, onlyOn, errs,
+                    limit: num('limit', DEFAULTS.limit), spam: $('spam').value, size: num('size', DEFAULTS.size)};
+        }
+
+        // Pack comma-separated entries into TXT values that stay under the 255-character limit
+        function pack(key, entries) {
+            const out = []; let cur = [];
+            entries.forEach((e) => {
+                if (cur.length && (key + '=' + cur.concat(e).join(',')).length > 220) { out.push(cur); cur = []; }
+                cur.push(e);
+            });
+            if (cur.length) out.push(cur);
+            return out.map((c) => key + '=' + c.join(','));
+        }
+
+        function wantedTxt(f) {
+            const txt = [];
+            if (f.forward) txt.push('catchall-forward=' + f.forward);
+            pack('catchall-route', f.routes.map((r) => r[0] + ':' + r[1])).forEach((t) => txt.push(t));
+            pack('catchall-block', f.block).forEach((t) => txt.push(t));
+            pack('catchall-only', f.only).forEach((t) => txt.push(t));
+            if (f.limit !== DEFAULTS.limit) txt.push('catchall-limit=' + f.limit);
+            if (f.spam !== DEFAULTS.spam) txt.push('catchall-spam=' + f.spam);
+            if (f.size !== DEFAULTS.size) txt.push('catchall-size=' + f.size);
+            return txt;
+        }
+        const keyOf = (t) => t.split('=')[0].trim().toLowerCase();
+
+        // ---- compare wanted records with the current ones
+        function plan(f) {
+            const steps = {del: [], chg: [], add: [], keep: []};
+            const haveMx = current ? current.mx : [];
+            const haveTxt = current ? current.txt.slice() : [];
+
+            const ours = haveMx.find((m) => m.host === MX);
+            haveMx.filter((m) => m.host !== MX).forEach((m) =>
+                steps.del.push({type: 'MX', value: m.host, extra: 'priority ' + m.priority,
+                                why: 'Mail would keep going to this server instead of being forwarded. Mailboxes on that server stop receiving new mail once you remove it.'}));
+            if (ours) steps.keep.push('MX  ' + MX);
+            else steps.add.push({type: 'MX', value: MX, extra: 'priority 10'});
+
+            const wanted = wantedTxt(f);
+            const left = haveTxt.filter((t) => !wanted.includes(t));       // current, not wanted as-is
+            const missing = wanted.filter((t) => !haveTxt.includes(t));     // wanted, not there yet
+            wanted.filter((t) => haveTxt.includes(t)).forEach((t) => steps.keep.push('TXT  ' + t));
+
+            // pair one leftover with one missing record of the same kind: that is an edit
+            missing.forEach((w) => {
+                const i = left.findIndex((c) => keyOf(c) === keyOf(w));
+                if (i >= 0) steps.chg.push({type: 'TXT', old: left.splice(i, 1)[0], value: w});
+                else steps.add.push({type: 'TXT', value: w});
+            });
+            left.forEach((c) => steps.del.push({type: 'TXT', value: c, why: 'No longer needed with the choices above.'}));
+            return steps;
+        }
+
+        // ---- output
+        function fieldRows(s) {
+            const host = `<div class="k">Host</div><div class="v">@</div><div></div>`;
+            const type = `<div class="k">Type</div><div class="v">${esc(s.type)}${s.extra ? ' · ' + esc(s.extra) : ''}</div><div></div>`;
+            const val = (label, v, cls, copy) => `<div class="k">${label}</div><div class="v ${cls || ''}">${esc(v)}</div>` +
+                `<div>${copy ? `<button class="copy" data-copy="${esc(v)}">Copy</button>` : ''}</div>`;
+            if (s.old !== undefined) return type + host + val('Now', s.old, 'old') + val('New', s.value, '', true);
+            return type + host + val('Value', s.value, '', true);
+        }
+
+        function render() {
+            const f = readForm();
+            ['forward', 'routes', 'block', 'only'].forEach((k) => {
+                const el = $(k + '-err'); el.textContent = f.errs[k]; el.classList.toggle('on', !!f.errs[k]);
+            });
+            $('forward').classList.toggle('invalid', !!f.errs.forward);
+            $('only-box').style.display = f.onlyOn ? 'block' : 'none';
+            document.querySelectorAll('#routes .at').forEach((a) => a.textContent = '@' + (domain || 'yourdomain.com') + ' →');
+
+            const box = $('steps');
+            const hasErr = Object.values(f.errs).some(Boolean);
+            if (!f.forward || hasErr) {
+                $('out-title').textContent = 'Your instructions';
+                $('out-sub').textContent = hasErr ? 'Fix the highlighted fields and the steps appear here.'
+                                                  : 'Fill in where mail should go and the steps appear here.';
+                box.innerHTML = '';
+                return;
+            }
+
+            const p = plan(f);
+            const total = p.del.length + p.chg.length + p.add.length;
+            const where = domain ? esc(domain) : 'your domain';
+            let html = '', n = 0;
+            const group = (cls, title, items, tag, label) => {
+                if (!items.length) return;
+                html += `<div class="group ${cls}"><i></i>${title}</div>`;
+                items.forEach((s) => {
+                    n += 1;
+                    html += `<div class="step"><div class="step-top"><span class="n">${n}</span><span class="tag ${cls}">${tag}</span>` +
+                            `<span>${label(s)}</span></div><div class="fields">${fieldRows(s)}</div></div>`;
+                });
+            };
+            group('del', 'Remove', p.del, 'Delete', (s) => esc(s.why || 'Delete this record.'));
+            group('chg', 'Change', p.chg, 'Edit', () => 'Edit this record, or delete it and add the new value.');
+            group('add', 'Add', p.add, 'Add', (s) => s.type === 'MX' ? 'Tells senders to deliver your mail to us.' : 'Create a new TXT record.');
+
+            if (!current) {
+                html = `<div class="warnbox">These are the records for a domain with nothing set up yet. Load your domain above to get steps that take your existing records into account.</div>` + html;
+            }
+            if (total === 0) {
+                html += `<div class="done-box"><b>Nothing to change.</b> The records on ${where} already match these choices.</div>`;
+            }
+            if (p.keep.length && current) {
+                html += `<details class="kept"><summary>${p.keep.length} record${p.keep.length > 1 ? 's' : ''} already correct</summary>` +
+                        p.keep.map((k) => `<code>${esc(k)}</code>`).join('') + `</details>`;
+            }
+
+            const newTargets = [f.forward].concat(f.routes.map((r) => r[1]));
+            html += `<div class="after"><b>Good to know</b><ol>
+                <li>Make these changes at your DNS provider, on the domain itself. Host <span class="mono">@</span> means the domain; some providers want the field left empty or the domain name typed in.</li>
+                <li>Paste values exactly, with no quotes around them. Leave TTL on automatic.</li>
+                <li>${total ? 'When you are done, check again to confirm everything is in place.' : 'Changes can take a few minutes to be visible.'}</li>
+                <li>Each mailbox that receives mail (${esc(newTargets.filter((v, i, a) => a.indexOf(v) === i).join(', '))}) gets a confirmation link the first time. Check the spam folder.</li></ol>
+                ${domain ? `<button class="btn2" id="recheck">Check ${esc(domain)} again</button>` : ''}</div>`;
+
+            $('out-title').textContent = total ? `${total} change${total > 1 ? 's' : ''} to make` : 'All set';
+            $('out-sub').textContent = current ? `Compared with the records on ${domain} right now.` : 'Not yet compared with your domain.';
+            box.innerHTML = html;
+
+            box.querySelectorAll('.copy').forEach((btn) => btn.onclick = async () => {
+                const text = btn.dataset.copy;
+                try { await navigator.clipboard.writeText(text); }
+                catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+                            try { document.execCommand('copy'); } catch (e2) {} ta.remove(); }
+                btn.textContent = 'Copied'; btn.classList.add('done');
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+            });
+            const again = $('recheck'); if (again) again.onclick = () => load(false);
+        }
+
+        // ---- load current records
+        async function load(fillForm) {
+            const d = cleanDomain($('domain').value);
+            const status = $('load-status');
+            status.className = '';
+            if (!d) { status.className = 'bad'; status.textContent = 'Enter your domain first.'; $('domain').focus(); return; }
+            $('load-btn').disabled = true; $('load-btn').textContent = 'Loading…';
+            try {
+                const data = await (await fetch('/api/check-dns?domain=' + encodeURIComponent(d))).json();
+                const fatal = (data.issues || []).find((i) => /does not exist|did not answer|does not look like|your own domain|not catchall/i.test(i.text));
+                if (data.error || !data.current || fatal) {
+                    current = null; domain = '';
+                    status.className = 'bad';
+                    status.textContent = data.error || (fatal ? fatal.text : data.message) || 'Could not read that domain.';
+                } else {
+                    domain = data.domain; current = data.current; $('domain').value = domain;
+                    const c = current.config || {};
+                    const found = current.txt.length + (current.mx.some((m) => m.host === MX) ? 1 : 0);
+                    status.innerHTML = found
+                        ? `Loaded <b>${esc(domain)}</b>: ${found} CatchAll record${found > 1 ? 's' : ''} found${fillForm ? ' and filled in below' : ''}.`
+                        : `Loaded <b>${esc(domain)}</b>: no CatchAll records yet. Fill in what you want below.`;
+                    if (fillForm) {
+                        $('forward').value = c.forward || $('forward').value;
+                        $('routes').innerHTML = ''; (c.routes || []).forEach((r) => addRoute(r[0], r[1]));
+                        $('block').value = (c.block || []).join(', ');
+                        $('only-on').checked = (c.only || []).length > 0; $('only').value = (c.only || []).join(', ');
+                        $('limit').value = /^\d+$/.test(c.limit || '') && c.limit !== DEFAULTS.limit ? c.limit : '';
+                        $('spam').value = ['strict', 'moderate', 'off'].includes(c.spam) ? c.spam : 'moderate';
+                        $('size').value = /^\d+$/.test(c.size || '') && c.size !== DEFAULTS.size ? c.size : '';
+                    }
+                }
+            } catch (e) {
+                status.className = 'bad'; status.textContent = 'Could not load the records. Please try again in a moment.';
+            } finally {
+                $('load-btn').disabled = false; $('load-btn').textContent = 'Load current records';
+                render();
+            }
+        }
+
+        $('load-btn').onclick = () => load(true);
+        $('domain').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(true); });
+        $('domain').addEventListener('input', () => { if (domain && cleanDomain($('domain').value) !== domain) { domain = ''; current = null; render(); } });
+        $('add-route').onclick = () => { addRoute('', ''); };
+        ['forward', 'block', 'only', 'limit', 'size'].forEach((id) => $(id).addEventListener('input', render));
+        ['only-on', 'spam'].forEach((id) => $(id).addEventListener('change', render));
+
+        const preset = new URLSearchParams(location.search).get('domain');
+        if (preset) { $('domain').value = preset; load(true); } else { render(); }
+    </script>
+</body>
+</html>

@@ -278,6 +278,34 @@ def check_domain(raw_domain, is_dkim_enabled=None, is_abuse_blocked=None):
         except dns.exception.DNSException:
             pass
 
+    # Raw current records, for the record builder on the website (/setup/)
+    current = {'mx': [], 'txt': [], 'config': None}
+    if exists:
+        try:
+            current['mx'] = [{'priority': m.preference, 'host': str(m.exchange).rstrip('.').lower()}
+                             for m in sorted(res.resolve(domain, 'MX'), key=lambda m: m.preference)]
+        except dns.exception.DNSException:
+            pass
+        try:
+            values = _txt_values(res, domain)
+            current['txt'] = [v for v in values if re.match(r'\s*catch[\s_-]*all', v, re.I)
+                              or 'catchall-forward=' in v]
+            from routing import parse_txt
+            cfg = parse_txt(values)
+            opt = {}
+            for v in values:
+                m = re.fullmatch(r'catchall-(limit|spam|size)=(\S+)', v.strip())
+                if m:
+                    opt[m.group(1)] = m.group(2)
+            current['config'] = {
+                'forward': cfg.forward, 'routes': [[n, t] for n, t in cfg.routes],
+                'block': cfg.block, 'only': cfg.only,
+                'limit': opt.get('limit'), 'spam': opt.get('spam'), 'size': opt.get('size'),
+            }
+        except dns.exception.DNSException:
+            pass
+    result['current'] = current
+
     if is_dkim_enabled:
         try:
             result['dkim']['enabled'] = bool(is_dkim_enabled(domain))
