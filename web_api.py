@@ -25,103 +25,16 @@ r = redis.Redis(decode_responses=True)
 
 @app.route('/api/check-dns')
 def check_dns():
-    """Check domain DNS configuration"""
+    """Check domain DNS configuration and name the specific mistake, if any"""
+    from dns_check import check_domain
+    from abuse import is_abuse_blocked
 
-    domain = request.args.get('domain', '').lower().strip()
-
-    if not domain:
+    raw = request.args.get('domain', '')
+    if not raw.strip():
         return jsonify({'error': 'Domain parameter required'}), 400
 
-    result = {
-        'domain': domain,
-        'mx_record': {'found': False},
-        'txt_records': {},
-        'dkim': {'enabled': False},
-        'status': 'incomplete'
-    }
-
-    # Check MX record
-    try:
-        mx_records = dns.resolver.resolve(domain, 'MX')
-        for mx in mx_records:
-            mx_host = str(mx.exchange).rstrip('.')
-            if mx_host == 'mail.catchall.mx':
-                result['mx_record'] = {
-                    'found': True,
-                    'value': mx_host,
-                    'priority': mx.preference,
-                    'valid': True
-                }
-                break
-    except:
-        result['mx_record'] = {'found': False, 'error': 'No MX record found'}
-
-    # Check TXT records
-    try:
-        txt_records = dns.resolver.resolve(domain, 'TXT')
-        for rdata in txt_records:
-            txt = str(rdata).strip('"')
-
-            if txt.startswith('catchall-forward='):
-                value = txt.split('=', 1)[1]
-                result['txt_records']['catchall-forward'] = {
-                    'found': True,
-                    'value': value,
-                    'valid': '@' in value
-                }
-            elif txt.startswith('catchall-limit='):
-                value = txt.split('=', 1)[1]
-                result['txt_records']['catchall-limit'] = {
-                    'found': True,
-                    'value': value,
-                    'valid': value.isdigit()
-                }
-            elif txt.startswith('catchall-spam='):
-                value = txt.split('=', 1)[1]
-                result['txt_records']['catchall-spam'] = {
-                    'found': True,
-                    'value': value,
-                    'valid': value in ['strict', 'moderate', 'off']
-                }
-    except:
-        pass
-
-    # Set defaults for optional records
-    if 'catchall-limit' not in result['txt_records']:
-        result['txt_records']['catchall-limit'] = {
-            'found': False,
-            'default': '50'
-        }
-
-    if 'catchall-spam' not in result['txt_records']:
-        result['txt_records']['catchall-spam'] = {
-            'found': False,
-            'default': 'moderate'
-        }
-
-    # Check DKIM status
-    result['dkim']['enabled'] = is_dkim_enabled(domain)
-
-    # Determine status
-    mx_ok = result['mx_record'].get('valid', False)
-    forward_ok = result['txt_records'].get('catchall-forward', {}).get('valid', False)
-
-    if mx_ok and forward_ok:
-        result['status'] = 'ready'
-        result['message'] = 'Your domain is configured correctly!'
-        if result['dkim']['enabled']:
-            result['message'] += ' DKIM signing is enabled.'
-    elif forward_ok:
-        result['status'] = 'partial'
-        result['message'] = 'Add MX record: mail.catchall.mx (priority 10)'
-    elif mx_ok:
-        result['status'] = 'partial'
-        result['message'] = 'Add TXT record: catchall-forward=your@email.com'
-    else:
-        result['status'] = 'incomplete'
-        result['message'] = 'DNS records not configured'
-
-    return jsonify(result)
+    return jsonify(check_domain(raw, is_dkim_enabled=is_dkim_enabled,
+                                is_abuse_blocked=is_abuse_blocked))
 
 @app.route('/dkim/setup')
 def dkim_setup():
