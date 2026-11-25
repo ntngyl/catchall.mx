@@ -33,25 +33,30 @@ LOCAL_SMTP_PORT = 10026  # outbound-only listener (master.cf); port 25 routes ev
 FROM_EMAIL = "verify@catchall.mx"
 FROM_NAME = "CatchAll.mx"
 
-def trigger_verification(domain, recipient_email):
-    """Send verification email and mark domain as pending"""
+def trigger_verification(domain, recipient_email, key=None):
+    """Send verification email and mark it as pending.
+
+    key is the queue/verification name: the bare domain for the default
+    destination, domain~<hash> for a routed destination (see routing.py).
+    """
+    key = key or domain
 
     # Check if already pending
-    if r.exists(f"verify:{domain}"):
-        logging.info(f"Verification already pending for {domain}")
+    if r.exists(f"verify:{key}"):
+        logging.info(f"Verification already pending for {key}")
         return False
 
     # Generate secure token
     token = secrets.token_urlsafe(32)
 
     # Get queue count
-    queue_count = str(r.llen(f"queue:{domain}") or 0)
+    queue_count = str(r.llen(f"queue:{key}") or 0)
 
     # Send verification email FIRST. Only persist the 7-day pending key if the
     # send actually succeeded; otherwise a transient/credential SMTP failure
     # would leave the key in place and block every retry for 7 days (the key
     # existence check in forward_email.py and above returns early).
-    sent = send_verification_email(domain, recipient_email, token, queue_count)
+    sent = send_verification_email(domain, recipient_email, token, queue_count, key)
     if not sent:
         logging.error(
             f"Verification email send FAILED for {domain}; not setting pending "
@@ -62,7 +67,7 @@ def trigger_verification(domain, recipient_email):
     # Store verification status with token and recipient
     verify_data = f"pending:{token}:{recipient_email}"
     r.setex(
-        f"verify:{domain}",
+        f"verify:{key}",
         7 * 86400,  # 7 days
         verify_data
     )
@@ -70,11 +75,12 @@ def trigger_verification(domain, recipient_email):
     logging.info(f"Verification triggered for {domain}")
     return True
 
-def send_verification_email(domain, recipient, token, queue_count):
+def send_verification_email(domain, recipient, token, queue_count, key=None):
     """Send verification email via Accumbamail SMTP"""
 
-    accept_url = f"https://catchall.mx/verify/{domain}?token={token}&action=accept"
-    block_url = f"https://catchall.mx/verify/{domain}?token={token}&action=block"
+    key = key or domain
+    accept_url = f"https://catchall.mx/verify/{key}?token={token}&action=accept"
+    block_url = f"https://catchall.mx/verify/{key}?token={token}&action=block"
 
     # Create email message
     msg = MIMEMultipart('alternative')
@@ -185,14 +191,18 @@ This link expires in 7 days.
         logging.error(f"Failed to submit verification email to local Postfix: {str(e)}")
         return False
 
-def verify_domain_token(domain, provided_token, action):
+def verify_domain_token(name, provided_token, action):
     """
-    Verify domain with token and accept/block
-    Returns (success, message)
+    Verify with token and accept/block.
+    name is the bare domain (default destination) or domain~<hash> (a routed
+    destination). Returns (success, message)
     """
+    from routing import load_config, split_queue_name, grant_consent
+
+    domain, _ = split_queue_name(name)
 
     # Get stored verification data
-    verify_data = r.get(f"verify:{domain}")
+    verify_data = r.get(f"verify:{name}")
     if not verify_data or not verify_data.startswith("pending:"):
         return False, "Invalid or expired verification link"
 
@@ -212,39 +222,31 @@ def verify_domain_token(domain, provided_token, action):
     if action == 'block':
         # Block this domain for this recipient
         r.set(f"block:{domain}:{recipient_email}", "1")
-        r.delete(f"verify:{domain}")
-        r.delete(f"queue:{domain}")
+        r.delete(f"verify:{name}")
+        r.delete(f"queue:{name}")
 
-        logging.info(f"Domain {domain} BLOCKED by {recipient_email}")
+        logging.info(f"Domain {domain} BLOCKED by its destination")
         return True, f"<strong>{domain}</strong> has been blocked. You will NOT receive any emails from this domain."
 
     elif action == 'accept':
         from queue_manager import flush_queue
-        import dns.resolver
 
-        # Get DNS config for forward address
-        config = {'forward': None}
-        try:
-            answers = dns.resolver.resolve(domain, 'TXT')
-            for rdata in answers:
-                txt = str(rdata).strip('"')
-                if txt.startswith('catchall-forward='):
-                    config['forward'] = txt.split('=', 1)[1]
-                    break
-        except:
-            pass
+        # The address that clicked must still be a destination in the domain's DNS
+        cfg = load_config(domain)
+        if cfg.lookup_failed:
+            return False, "Could not read the domain's DNS records. Please try the link again in a few minutes."
+        if recipient_email.strip().lower() not in [t.lower() for t in cfg.targets()]:
+            return False, "The domain's DNS no longer forwards to this address."
 
-        if not config['forward']:
-            return False, "Domain configuration not found"
-
-        # Mark as verified
-        r.delete(f"verify:{domain}")
+        # Mark as verified, and record that this destination agreed
+        r.delete(f"verify:{name}")
         r.set(f"active:{domain}", int(time.time()))
+        grant_consent(domain, recipient_email)
 
-        # Flush queue
-        count = flush_queue(domain, config['forward'])
+        # Flush the mail that was waiting for this destination
+        count = flush_queue(name, recipient_email)
 
-        logging.info(f"Domain {domain} ACCEPTED by {recipient_email}, forwarded {count} emails")
+        logging.info(f"Domain {domain} ACCEPTED by its destination, forwarded {count} emails")
         return True, f"<strong>{domain}</strong> verified! We've forwarded <strong>{count}</strong> email(s) to you. Future emails from this domain will be forwarded automatically."
 
     else:

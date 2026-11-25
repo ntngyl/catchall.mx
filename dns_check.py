@@ -250,6 +250,32 @@ def check_domain(raw_domain, is_dkim_enabled=None, is_abuse_blocked=None):
     exists = _check_mx(res, domain, result, issues)
     forward_to = _check_forward(res, domain, result, issues) if exists else None
 
+    # Optional per-address rules (routing.py reads them the same way)
+    if exists:
+        try:
+            from routing import parse_txt
+            cfg = parse_txt(_txt_values(res, domain))
+            result['rules'] = {
+                'routes': [{'address': f"{n}@{domain}", 'to': t} for n, t in cfg.routes],
+                'block': [f"{n}@{domain}" for n in cfg.block],
+                'only': [f"{n}@{domain}" for n in cfg.only],
+            }
+            for err in cfg.errors:
+                _issue(issues, 'warning', err)
+            for name, target in cfg.routes:
+                tdom = target.rsplit('@', 1)[1].lower()
+                if tdom == domain or tdom.endswith('.' + domain):
+                    _issue(issues, 'error',
+                           f"The route for {name}@{domain} points to an address on {tdom} itself, "
+                           "so that mail would loop back to us.",
+                           "Route it to a mailbox on another domain.")
+            if cfg.only and forward_to:
+                _issue(issues, 'info',
+                       f"Allow-list is on: only {len(cfg.only) + len(cfg.routes)} listed address(es) "
+                       "accept mail. Mail to any other address is refused.")
+        except dns.exception.DNSException:
+            pass
+
     if is_dkim_enabled:
         try:
             result['dkim']['enabled'] = bool(is_dkim_enabled(domain))

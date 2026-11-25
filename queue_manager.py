@@ -40,11 +40,22 @@ def queue_email(domain, email_data):
     # Create domain directory
     domain_dir = os.path.join(QUEUE_DIR, domain)
     os.makedirs(domain_dir, exist_ok=True)
+    # The pipe (nobody) writes the queue; the web service (www-data, member of
+    # the same group) must be able to read and remove it when the destination
+    # clicks Accept. Without this the queue was only flushed by the nightly cron.
+    try:
+        os.chmod(domain_dir, 0o770)
+    except OSError:
+        pass
 
     # Save to disk
     email_path = os.path.join(domain_dir, f"{email_id}.eml")
     with open(email_path, 'w', encoding='utf-8', errors='surrogateescape') as f:
         f.write(email_data)
+    try:
+        os.chmod(email_path, 0o660)
+    except OSError:
+        pass
 
     # Track in Redis
     r.rpush(queue_key, email_id)
@@ -61,6 +72,8 @@ def flush_queue(domain, forward_to):
     """
     from forwarder import forward_email
 
+    # A queue is named after the domain, or domain~<hash> for a routed destination
+    real_domain = domain.split('~', 1)[0]
     queue_key = f"queue:{domain}"
 
     # Get email IDs from Redis
@@ -93,7 +106,7 @@ def flush_queue(domain, forward_to):
                 with open(email_path, 'r', encoding='utf-8', errors='surrogateescape') as f:
                     email_data = f.read()
 
-                if forward_email(email_data, forward_to, f"queued@{domain}", domain):
+                if forward_email(email_data, forward_to, f"queued@{real_domain}", real_domain):
                     count += 1
                     logging.info(f"Successfully forwarded: {email_id}")
                     os.remove(email_path)
@@ -126,29 +139,26 @@ def flush_queue(domain, forward_to):
     return count
 
 def retry_active_queues():
-    """Retry queued emails left behind for domains that are already verified (cron job)"""
-    import dns.resolver
+    """Retry queued emails left behind for destinations that are already verified (cron job)"""
     from abuse import is_abuse_blocked
+    from routing import load_config, split_queue_name, target_for_queue, has_consent
 
     if not os.path.exists(QUEUE_DIR):
         return
 
-    for domain in os.listdir(QUEUE_DIR):
+    for name in os.listdir(QUEUE_DIR):
+        domain, _ = split_queue_name(name)
         if not r.exists(f"active:{domain}"):
             continue
 
-        forward_to = None
-        try:
-            for rdata in dns.resolver.resolve(domain, 'TXT'):
-                txt = str(rdata).strip('"')
-                if txt.startswith('catchall-forward='):
-                    forward_to = txt.split('=', 1)[1]
-                    break
-        except Exception:
+        cfg = load_config(domain)
+        if cfg.lookup_failed:
             continue
+        forward_to = target_for_queue(name, cfg)
 
-        if forward_to and not is_abuse_blocked(domain, forward_to):
-            flush_queue(domain, forward_to)
+        if (forward_to and has_consent(domain, forward_to, cfg.forward)
+                and not is_abuse_blocked(domain, forward_to)):
+            flush_queue(name, forward_to)
 
 def cleanup_expired_queues():
     """Cleanup old queued emails (cron job)"""

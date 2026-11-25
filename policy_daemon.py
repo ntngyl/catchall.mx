@@ -11,6 +11,7 @@ import time
 import logging
 from datetime import datetime
 from abuse import is_blocked_domain, is_blocked_target
+from routing import load_config, resolve
 
 # Configuration
 REDIS_HOST = 'localhost'
@@ -168,6 +169,21 @@ async def process_request(req):
     if not config:
         logging.info(f"No valid config for {domain}")
         return "action=550 5.1.1 Domain not configured for catchall\n\n"
+
+    # Per-address rules from DNS: refuse blocked / unlisted addresses before
+    # any content is accepted, and apply the abuse list to routed destinations
+    try:
+        rules = load_config(domain)
+        if not rules.lookup_failed and rules.forward:
+            action, target = resolve(rules, recipient.rsplit('@', 1)[0])
+            if action == 'reject':
+                logging.info(f"Address refused by {domain} rules ({target})")
+                return "action=550 5.1.1 Address not accepted by this domain\n\n"
+            if is_blocked_target(target):
+                logging.warning(f"Blocked abusive routed target for {domain}")
+                return "action=550 5.7.1 Domain blocked due to abuse\n\n"
+    except Exception as e:
+        logging.error(f"Rule check failed for {domain}: {e}")
 
     # Block abusive forward targets, whichever domain points at them
     if is_blocked_target(config['forward']):

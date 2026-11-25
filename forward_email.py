@@ -13,6 +13,7 @@ import os
 from spam_detector import should_block_spam, should_quarantine, validate_sender_authenticity
 from abuse import is_abuse_blocked
 from from_rewrite import prepare_for_forward
+from routing import load_config, resolve, has_consent, queue_name, revoke_all_consent
 
 # Postfix pipe(8) treats this exit status as a temporary failure: the message
 # stays in the Postfix queue and is retried instead of being bounced/lost.
@@ -71,6 +72,7 @@ def is_verified(domain):
     if inactive_days > 30:
         log(f"Domain {domain} inactive for {int(inactive_days)} days, requiring re-verification")
         r.delete(f"active:{domain}")
+        revoke_all_consent(domain)
         return False
 
     return True
@@ -79,22 +81,20 @@ def is_dkim_enabled(domain):
     """Check if DKIM is enabled for a domain"""
     return r.exists(f"dkim:{domain}")
 
-def queue_email_and_verify(domain, recipient, email_content):
-    """Queue email and trigger verification"""
+def queue_email_and_verify(domain, forward_to, email_content, qname):
+    """Hold the email and ask the destination to confirm forwarding"""
     from queue_manager import queue_email
     from verification import trigger_verification
 
-    email_id = queue_email(domain, email_content)
+    email_id = queue_email(qname, email_content)
     if not email_id:
         log(f"Failed to queue email for {domain} - queue full")
         sys.exit(1)
 
-    log(f"Queued email {email_id} for unverified domain {domain}")
+    log(f"Queued email {email_id} for unconfirmed destination of {domain}")
 
-    if not r.exists(f"verify:{domain}"):
-        forward_to = get_forward_address(domain)
-        if forward_to:
-            trigger_verification(domain, forward_to)
+    if not r.exists(f"verify:{qname}"):
+        if trigger_verification(domain, forward_to, key=qname):
             log(f"Triggered verification for {domain}")
 
     sys.exit(0)
@@ -162,16 +162,28 @@ def main():
         sys.exit(1)
 
     recipient = sys.argv[1]
-    domain = recipient.split('@')[1]
+    local, domain = recipient.rsplit('@', 1)
+    domain = domain.lower()
 
-    log(f"Processing email for {recipient} (domain: {domain})")
+    log(f"Processing email for {domain}")
 
-    forward_to = get_forward_address(domain)
-    if not forward_to:
+    # Rules come from the domain's DNS: default forward, per-address routes,
+    # blocked addresses and the optional allow-list (see routing.py)
+    cfg = load_config(domain)
+    if cfg.lookup_failed:
+        log(f"DNS lookup failed for {domain} - deferring for retry")
+        sys.exit(EX_TEMPFAIL)
+    if not cfg.forward:
         log(f"No forward address found for {domain}")
         sys.exit(0)
 
-    log(f"Forward address: {forward_to}")
+    action, forward_to = resolve(cfg, local)
+    if action == 'reject':
+        log(f"Address not accepted by {domain} rules ({forward_to}) - discarding email")
+        sys.exit(0)
+
+    routed = forward_to.lower() != cfg.forward.lower()
+    log(f"Forward address: {forward_to}" + (" (routed)" if routed else ""))
 
     if is_abuse_blocked(domain, forward_to):
         log(f"Domain {domain} / target {forward_to} is on the abuse blocklist - discarding email")
@@ -220,9 +232,11 @@ def main():
             quarantine_email(domain, email_content, reason='sender_auth_fail', score=score)
             sys.exit(0)
 
-    if not is_verified(domain):
-        log(f"Domain {domain} not verified - queueing email")
-        queue_email_and_verify(domain, recipient, email_content)
+    # Forward only to a destination that confirmed it wants this domain's mail
+    if not (is_verified(domain) and has_consent(domain, forward_to, cfg.forward)):
+        log(f"Destination for {domain} not confirmed yet - queueing email")
+        queue_email_and_verify(domain, forward_to, email_content,
+                               queue_name(domain, forward_to, cfg.forward))
     else:
         dkim_status = "with DKIM" if is_dkim_enabled(domain) else "without DKIM"
         log(f"Domain {domain} verified - forwarding immediately {dkim_status}")

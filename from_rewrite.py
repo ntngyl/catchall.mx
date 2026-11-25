@@ -228,7 +228,7 @@ def prepare_for_forward(content, domain=''):
                                         clean_orig, add_reply_to,
                                         domain.encode('ascii'), USER_SELECTOR, user_key)
                 if dkim.verify(out):
-                    log.info(f"From alignment [{domain}]: rewrote From ({addr or 'none'}) and signed as {domain}")
+                    log.info(f"From alignment [{domain}]: rewrote From ({from_domain or 'none'}) and signed as {domain}")
                     return out
                 log.warning(f"From alignment [{domain}]: per-domain DKIM record does not verify, using catchall.mx")
             except Exception as e:
@@ -240,7 +240,7 @@ def prepare_for_forward(content, domain=''):
             return raw
         out = _rewrite_and_sign(fields, body, display, FWD_ADDR, clean_orig,
                                 add_reply_to, SIGN_DOMAIN, SIGN_SELECTOR, key)
-        log.info(f"From alignment [{domain}]: rewrote From ({addr or 'none'}) and signed as catchall.mx")
+        log.info(f"From alignment [{domain}]: rewrote From ({from_domain or 'none'}) and signed as catchall.mx")
         return out
 
     except Exception as e:
