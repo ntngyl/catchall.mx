@@ -30,7 +30,7 @@ r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 def ensure_keys_dir():
     """Create DKIM keys directory if it doesn't exist"""
     if not os.path.exists(DKIM_KEYS_DIR):
-        os.makedirs(DKIM_KEYS_DIR, mode=0o700)
+        os.makedirs(DKIM_KEYS_DIR, mode=0o750)
         logging.info(f"Created DKIM keys directory: {DKIM_KEYS_DIR}")
 
 def get_key_paths(domain):
@@ -45,6 +45,11 @@ def generate_dkim_key(domain):
     Generate DKIM key pair for a domain
     Returns (success, dns_record or error_message)
     """
+    domain = (domain or '').strip().lower().rstrip('.')
+    if len(domain) > 253 or not re.fullmatch(
+            r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}', domain):
+        return False, "Invalid domain name"
+
     ensure_keys_dir()
 
     private_key_path, public_key_path = get_key_paths(domain)
@@ -81,7 +86,9 @@ def generate_dkim_key(domain):
         # Save private key (restricted permissions)
         with open(private_key_path, 'wb') as f:
             f.write(private_pem)
-        os.chmod(private_key_path, 0o600)
+        # Group-readable: the directory is setgid to the forwarder's group
+        # (Postfix pipe runs as nobody:nogroup) so it can sign with this key.
+        os.chmod(private_key_path, 0o640)
 
         # Save public key
         with open(public_key_path, 'wb') as f:
@@ -164,6 +171,14 @@ def verify_dkim_dns(domain):
             # surrounding quotes, whitespace, or inter-chunk spacing that a DNS
             # provider may store/return (e.g. a TXT value kept with literal
             # double-quotes, which left a trailing " on the extracted key).
+            # A value saved with literal double-quote characters matches after
+            # normalization, but real verifiers (Gmail etc.) reject it, so the
+            # signature would fail. Tell the user instead of enabling DKIM.
+            if '"' in txt_value and 'p=' in txt_value:
+                return False, ("DKIM record found, but its value contains quote characters (\"). "
+                               "Edit the TXT record at your DNS provider and remove the quotes "
+                               "around the value, then verify again.")
+
             if 'p=' in txt_value and 'p=' in expected_value:
                 dns_key = re.sub(r'[^A-Za-z0-9+/=]', '', txt_value.split('p=', 1)[1])
                 expected_key = re.sub(r'[^A-Za-z0-9+/=]', '', expected_value.split('p=', 1)[1])

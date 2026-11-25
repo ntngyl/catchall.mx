@@ -9,8 +9,12 @@ DKIM signature. This module decides, per message:
   * original DKIM verifies and matches the From: domain -> forward untouched
   * rspamd flagged it as spam, or it fails the sender's own DMARC policy
     -> forward untouched (catchall.mx must not vouch for it)
-  * otherwise -> rewrite From: to forwarded@catchall.mx (real sender kept in
-    Reply-To and the display name) and DKIM-sign as catchall.mx
+  * otherwise -> rewrite From: (real sender kept in Reply-To and the display
+    name) and DKIM-sign it:
+      - domain has per-domain DKIM enabled (website /dkim/setup) and its DNS
+        record still verifies -> From: forwarded@<user domain>, signed with
+        the user's key (selector "catchall"), so reputation is the user's own
+      - else -> From: forwarded@catchall.mx, signed as catchall.mx
 
 Kill switch:  redis-cli set config:from_rewrite off
 """
@@ -32,6 +36,9 @@ KEY_PATHS = [
     '/etc/catchall/dkim/rs1.www-data.key',
     '/var/lib/rspamd/dkim/catchall.mx.rs1.key',
 ]
+# Per-domain keys created by dkim_manager.py (website DKIM setup)
+USER_KEYS_DIR = '/opt/catchall/dkim_keys'
+USER_SELECTOR = b'catchall'
 SIGN_HEADERS = [
     b'from', b'reply-to', b'to', b'cc', b'subject', b'date', b'message-id',
     b'mime-version', b'content-type', b'x-original-from',
@@ -111,13 +118,57 @@ def _load_key():
     return None
 
 
+def _redis():
+    return redis.Redis(host='localhost', port=6379, decode_responses=True,
+                       socket_timeout=2)
+
+
 def _enabled():
     try:
-        r = redis.Redis(host='localhost', port=6379, decode_responses=True,
-                        socket_timeout=2)
-        return (r.get('config:from_rewrite') or 'on').lower() != 'off'
+        return (_redis().get('config:from_rewrite') or 'on').lower() != 'off'
     except Exception:
         return True
+
+
+def _user_key(domain):
+    """Private key of a domain that enabled DKIM on the website, else None."""
+    if not domain or not re.fullmatch(r'[A-Za-z0-9.-]+', domain):
+        return None
+    try:
+        if not _redis().exists(f"dkim:{domain}"):
+            return None
+        with open(f"{USER_KEYS_DIR}/{domain}.private", 'rb') as f:
+            return f.read()
+    except Exception as e:
+        log.error(f"From alignment [{domain}]: per-domain DKIM key unusable: {e!r}")
+        return None
+
+
+def _rewrite_and_sign(fields, body, display, from_addr, clean_orig, add_reply_to,
+                      sign_domain, selector, key):
+    new_from = email.utils.formataddr((display, from_addr))
+    out, placed = [], False
+    for f in fields:
+        n = _name(f)
+        if n in (b'arc-seal', b'arc-message-signature', b'arc-authentication-results'):
+            continue  # the seal covered the old From and would now fail
+        if n == b'from':
+            if not placed:
+                out.append(b'From: ' + new_from.encode('ascii', 'replace'))
+                placed = True
+            continue
+        out.append(f)
+    if not placed:
+        out.append(b'From: ' + new_from.encode('ascii', 'replace'))
+    if clean_orig:
+        safe = clean_orig.encode('utf-8', 'replace')
+        if add_reply_to:
+            out.append(b'Reply-To: ' + safe)
+        out.append(b'X-Original-From: ' + safe)
+    rewritten = b'\r\n'.join(out) + b'\r\n\r\n' + body
+    signature = dkim.sign(message=rewritten, selector=selector, domain=sign_domain,
+                          privkey=key, include_headers=SIGN_HEADERS)
+    return signature + rewritten
 
 
 def _display(name, addr):
@@ -164,44 +215,33 @@ def prepare_for_forward(content, domain=''):
             log.info(f"From alignment [{domain}]: fails DMARC policy of {from_domain}, untouched")
             return raw
 
+        display = _display(name, addr or 'unknown sender')
+        clean_orig = re.sub(r'[\r\n]+', ' ', orig_from).strip()
+        add_reply_to = bool(addr) and _first(fields, b'reply-to') is None
+
+        # Preferred: the user's own domain and key. The result is verified
+        # against live DNS, so a removed or changed record falls back safely.
+        user_key = _user_key(domain)
+        if user_key:
+            try:
+                out = _rewrite_and_sign(fields, body, display, f"forwarded@{domain}",
+                                        clean_orig, add_reply_to,
+                                        domain.encode('ascii'), USER_SELECTOR, user_key)
+                if dkim.verify(out):
+                    log.info(f"From alignment [{domain}]: rewrote From ({addr or 'none'}) and signed as {domain}")
+                    return out
+                log.warning(f"From alignment [{domain}]: per-domain DKIM record does not verify, using catchall.mx")
+            except Exception as e:
+                log.error(f"From alignment [{domain}]: per-domain signing failed {e!r}, using catchall.mx")
+
         key = _load_key()
         if not key:
             log.error(f"From alignment [{domain}]: signing key not readable, untouched")
             return raw
-
-        new_from = email.utils.formataddr((_display(name, addr or 'unknown sender'), FWD_ADDR))
-        has_reply_to = _first(fields, b'reply-to') is not None
-        clean_orig = re.sub(r'[\r\n]+', ' ', orig_from).strip()
-
-        out, placed = [], False
-        for f in fields:
-            n = _name(f)
-            if n in (b'arc-seal', b'arc-message-signature', b'arc-authentication-results'):
-                continue  # the seal covered the old From and would now fail
-            if n == b'from':
-                if not placed:
-                    out.append(b'From: ' + new_from.encode('ascii', 'replace'))
-                    placed = True
-                continue
-            out.append(f)
-        if not placed:
-            out.append(b'From: ' + new_from.encode('ascii', 'replace'))
-        if clean_orig:
-            safe = clean_orig.encode('utf-8', 'replace')
-            if not has_reply_to and addr:
-                out.append(b'Reply-To: ' + safe)
-            out.append(b'X-Original-From: ' + safe)
-
-        rewritten = b'\r\n'.join(out) + b'\r\n\r\n' + body
-        signature = dkim.sign(
-            message=rewritten,
-            selector=SIGN_SELECTOR,
-            domain=SIGN_DOMAIN,
-            privkey=key,
-            include_headers=SIGN_HEADERS,
-        )
+        out = _rewrite_and_sign(fields, body, display, FWD_ADDR, clean_orig,
+                                add_reply_to, SIGN_DOMAIN, SIGN_SELECTOR, key)
         log.info(f"From alignment [{domain}]: rewrote From ({addr or 'none'}) and signed as catchall.mx")
-        return signature + rewritten
+        return out
 
     except Exception as e:
         log.error(f"From alignment [{domain}]: error {e!r}, forwarding untouched")

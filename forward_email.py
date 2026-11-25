@@ -10,7 +10,6 @@ import time
 import dns.resolver
 import logging
 import os
-import dkim  # pip install dkimpy
 from spam_detector import should_block_spam, should_quarantine, validate_sender_authenticity
 from abuse import is_abuse_blocked
 from from_rewrite import prepare_for_forward
@@ -31,9 +30,6 @@ logging.basicConfig(
 )
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
-
-DKIM_KEYS_DIR = '/opt/catchall/dkim_keys'
-DKIM_SELECTOR = b'catchall'
 
 def log(message):
     logging.info(message)
@@ -83,58 +79,6 @@ def is_dkim_enabled(domain):
     """Check if DKIM is enabled for a domain"""
     return r.exists(f"dkim:{domain}")
 
-def get_dkim_private_key(domain):
-    """Get DKIM private key for a domain"""
-    safe_domain = domain.replace('/', '_').replace('..', '_')
-    key_path = os.path.join(DKIM_KEYS_DIR, f"{safe_domain}.private")
-
-    if os.path.exists(key_path):
-        with open(key_path, 'rb') as f:
-            return f.read()
-    return None
-
-def sign_email_with_dkim(email_content, domain):
-    """
-    Sign email with DKIM if enabled for domain
-    Returns signed email content or original if not enabled
-    """
-    if not is_dkim_enabled(domain):
-        return email_content
-
-    private_key = get_dkim_private_key(domain)
-    if not private_key:
-        log(f"DKIM key not found for {domain}, sending unsigned")
-        return email_content
-
-    try:
-        # Convert to bytes if string
-        if isinstance(email_content, str):
-            email_bytes = email_content.encode('utf-8')
-        else:
-            email_bytes = email_content
-
-        # Sign the email
-        signature = dkim.sign(
-            message=email_bytes,
-            selector=DKIM_SELECTOR,
-            domain=domain.encode('utf-8'),
-            privkey=private_key,
-            include_headers=[
-                b'from', b'to', b'subject', b'date', b'message-id',
-                b'content-type', b'mime-version'
-            ]
-        )
-
-        # Prepend signature to email
-        signed_email = signature + email_bytes
-
-        log(f"Email signed with DKIM for {domain}")
-        return signed_email.decode('utf-8') if isinstance(email_content, str) else signed_email
-
-    except Exception as e:
-        log(f"DKIM signing failed for {domain}: {e}")
-        return email_content
-
 def queue_email_and_verify(domain, recipient, email_content):
     """Queue email and trigger verification"""
     from queue_manager import queue_email
@@ -158,12 +102,10 @@ def queue_email_and_verify(domain, recipient, email_content):
 def forward_email_now(domain, forward_to, email_content):
     """Forward email immediately via SMTP with optional DKIM signing"""
 
-    # Keep the From: header DMARC-aligned (rewrites it and signs as
-    # catchall.mx when the original sender's DKIM cannot carry alignment)
-    prepared = prepare_for_forward(email_content, domain)
-
-    # Sign email with DKIM if enabled
-    signed_content = sign_email_with_dkim(prepared, domain)
+    # Keep the From: header DMARC-aligned. When the original sender's DKIM
+    # cannot carry alignment, From is rewritten and the message is signed
+    # with the domain's own DKIM key if enabled, else as catchall.mx.
+    signed_content = prepare_for_forward(email_content, domain)
 
     dest_domain = forward_to.split('@')[1]
     mx_servers = get_mx_servers(dest_domain)
