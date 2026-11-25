@@ -104,6 +104,9 @@
         .confirm-box p { color: var(--muted); font-size: 14.5px; margin: 4px 0 12px; }
         .confirm-box .btn2 { background: var(--ink); color: var(--bg); border: 0; border-radius: 9px; padding: 10px 16px; font: 600 14px var(--sans); cursor: pointer; }
         .confirm-box .btn2:disabled { opacity: .6; cursor: progress; }
+        .after .btn2:disabled { opacity: .6; cursor: progress; }
+        .recheck-note { margin-top: 10px; font-size: 14px; color: var(--warn); }
+        .recheck-note.good { color: var(--good); }
         .confirm-msg { margin-top: 10px; font-size: 14px; color: var(--muted); }
         .confirm-msg.good { color: var(--accent); } .confirm-msg.bad { color: var(--bad); }
         .after { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--muted); }
@@ -311,6 +314,7 @@
                 path: 'Name.com → My Domains → your domain → Manage DNS Records',
                 notes: ['Leave the Host field empty for the domain itself. The value goes in "Answer".']},
         };
+        let lastCheck = null;
         let detected = 'generic';
         const prov = () => PROVIDERS[$('provider').value] || PROVIDERS.generic;
         function fillProviders() {
@@ -554,7 +558,10 @@
                 <li>${P.txt ? 'Paste values exactly as shown, including the quotes.' : 'Paste values exactly, with no quotes around them.'} Leave TTL on automatic.</li>
                 <li>${total ? 'When you are done, check again to confirm everything is in place.' : 'Changes can take a few minutes to be visible.'}</li>
                 <li>Each mailbox that receives mail (${esc(newTargets.filter((v, i, a) => a.indexOf(v) === i).join(', '))}) has to confirm once. When the records are in place, check again and a "Send confirmation email" button appears here.</li></ol>
-                ${domain ? `<button class="btn2" id="recheck">Check ${esc(domain)} again</button>` : ''}</div>`;
+                ${domain ? `<button class="btn2" id="recheck">Check ${esc(domain)} again</button>` : ''}
+                ${domain && lastCheck ? `<p class="recheck-note ${total ? '' : 'good'}">Checked at ${lastCheck.toLocaleTimeString()}. ${total
+                    ? `${total} change${total > 1 ? 's are' : ' is'} not visible yet. New records usually show within a minute; if you just saved them, wait a moment and check again.`
+                    : 'Everything is in place.'}</p>` : ''}</div>`;
 
             $('out-title').textContent = total ? `${total} change${total > 1 ? 's' : ''} to make` : 'All set';
             $('out-sub').textContent = current ? `Compared with the records on ${domain} right now.` : 'Not yet compared with your domain.';
@@ -568,7 +575,7 @@
                 btn.textContent = 'Copied'; btn.classList.add('done');
                 setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
             });
-            const again = $('recheck'); if (again) again.onclick = () => load(false);
+            const again = $('recheck'); if (again) again.onclick = () => { again.disabled = true; again.textContent = 'Checking…'; lastCheck = new Date(); load(false); };
             const sendBtn = $('send-confirm');
             if (sendBtn) sendBtn.onclick = () => sendConfirmation(domain, sendBtn, $('confirm-out'));
         }
