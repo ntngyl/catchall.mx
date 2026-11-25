@@ -21,6 +21,20 @@ logging.basicConfig(
 )
 
 app = Flask(__name__)
+
+
+@app.after_request
+def add_shared_stylesheet(response):
+    """Give every server-rendered page the site look (served by nginx from /app.css)"""
+    try:
+        if response.mimetype == 'text/html' and not response.direct_passthrough:
+            html = response.get_data(as_text=True)
+            if '</head>' in html and '/app.css' not in html:
+                response.set_data(html.replace(
+                    '</head>', '<link rel="stylesheet" href="/app.css?v=1"></head>', 1))
+    except Exception:
+        pass
+    return response
 r = redis.Redis(decode_responses=True)
 
 @app.route('/api/check-dns')

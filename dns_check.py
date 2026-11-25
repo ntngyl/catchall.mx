@@ -117,7 +117,9 @@ def _check_mx(res, domain, result, issues):
             _issue(issues, 'error', f"Your MX value is an IP address ({host}). MX records need a name.",
                    f"Change the MX value to {MX_TARGET}.")
             return True
-    names = ', '.join(h[1] for h in hosts) or 'nothing'
+    names = ', '.join(h[1] for h in hosts[:2]) or 'nothing'
+    if len(hosts) > 2:
+        names += f" and {len(hosts) - 2} more"
     _issue(issues, 'error', f"Your MX currently points to {names}, so mail goes there, not to us.",
            f"Replace it with one MX record: value {MX_TARGET}, priority 10.")
     return True

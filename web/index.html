@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <title>CatchAll.mx - Free catch-all email forwarding, configured in DNS</title>
+    <meta name="title" content="CatchAll.mx - Free catch-all email forwarding, configured in DNS">
+    <meta name="description" content="Free DNS-based email forwarding service. Configure with just 2 DNS records and start forwarding all emails from *@yourdomain.com instantly. No accounts, no dashboards, perfect for developers and side projects.">
+    <meta name="keywords" content="email forwarding, catch-all email, DNS email forwarding, wildcard email, domain email forwarding, developer tools, free email forwarding, SMTP forwarding, email relay">
+    <meta name="author" content="CatchAll.mx">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://catchall.mx/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://catchall.mx/">
+    <meta property="og:title" content="CatchAll.mx - Free catch-all email forwarding, configured in DNS">
+    <meta property="og:description" content="Free DNS-based email forwarding service. Configure with just 2 DNS records and start forwarding all emails from *@yourdomain.com instantly. Perfect for developers and side projects.">
+    <meta property="og:image" content="https://catchall.mx/og-image.png">
+    <meta property="og:site_name" content="CatchAll.mx">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://catchall.mx/">
+    <meta property="twitter:title" content="CatchAll.mx - Free catch-all email forwarding, configured in DNS">
+    <meta property="twitter:description" content="Free DNS-based email forwarding service. Configure with just 2 DNS records and start forwarding all emails from *@yourdomain.com instantly. Perfect for developers and side projects.">
+    <meta property="twitter:image" content="https://catchall.mx/og-image.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PL1PWVY9KG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-PL1PWVY9KG');
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314161a'/%3E%3Cpath d='M7 11l9 7 9-7' fill='none' stroke='%234fd1a1' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7 21h18' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+
+    <style>
+        :root {
+            --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede7; --ink: #14161a; --muted: #5b626e;
+            --line: #e2dfd6; --accent: #0d6b4e; --accent-soft: #e3f1eb; --warn: #9a5b00; --warn-soft: #fbf0d9;
+            --bad: #b3261e; --bad-soft: #fbe9e7; --hero: #101216; --hero-ink: #f1f2f4; --hero-muted: #a2a9b4;
+            --hero-line: #262a31; --hero-surface: #171a20; --mint: #4fd1a1;
+            --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            --radius: 14px; --shadow: 0 1px 2px rgba(20,22,26,.04), 0 8px 28px rgba(20,22,26,.06);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0d0f12; --surface: #15181d; --surface-2: #1b1f25; --ink: #eceef1; --muted: #99a1ad;
+                --line: #262a31; --accent: #4fd1a1; --accent-soft: #12281f; --warn: #e5b45a; --warn-soft: #2a2110;
+                --bad: #ff8a80; --bad-soft: #2c1513; --hero: #090a0c; --hero-surface: #13161b;
+                --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.35);
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; scroll-padding-top: 76px; -webkit-text-size-adjust: 100%; }
+        body { font-family: var(--sans); background: var(--bg); color: var(--ink); line-height: 1.6; font-size: 16px; -webkit-font-smoothing: antialiased; }
+        a { color: inherit; }
+        code, .mono { font-family: var(--mono); font-size: .92em; }
+        .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+        :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 6px; }
+
+        /* nav */
+        .nav { position: sticky; top: 0; z-index: 20; background: rgba(16,18,22,.86); backdrop-filter: saturate(160%) blur(12px); -webkit-backdrop-filter: saturate(160%) blur(12px); border-bottom: 1px solid var(--hero-line); }
+        .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+        .brand { font-family: var(--mono); font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--hero-ink); text-decoration: none; }
+        .brand span { color: var(--mint); }
+        .nav-links { display: flex; gap: 26px; align-items: center; }
+        .nav-links a { color: var(--hero-muted); text-decoration: none; font-size: 14.5px; transition: color .15s; }
+        .nav-links a:hover { color: var(--hero-ink); }
+        .nav-links a.pill { color: var(--hero); background: var(--mint); padding: 7px 14px; border-radius: 999px; font-weight: 600; }
+        @media (max-width: 760px) { .nav-links a:not(.pill) { display: none; } }
+
+        /* hero */
+        .hero { background: var(--hero); color: var(--hero-ink); padding: 84px 0 96px; position: relative; overflow: hidden; }
+        .hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--hero-line) 1px, transparent 1px), linear-gradient(90deg, var(--hero-line) 1px, transparent 1px); background-size: 56px 56px; opacity: .35; -webkit-mask-image: radial-gradient(ellipse 80% 70% at 70% 20%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse 80% 70% at 70% 20%, #000 20%, transparent 75%); }
+        .hero .wrap { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+        .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--hero-muted); border: 1px solid var(--hero-line); padding: 5px 12px; border-radius: 999px; margin-bottom: 26px; background: var(--hero-surface); }
+        .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(79,209,161,.16); }
+        .hero h1 { font-size: clamp(38px, 5.4vw, 60px); line-height: 1.04; letter-spacing: -.035em; font-weight: 700; text-wrap: balance; }
+        .hero h1 em { font-style: normal; color: var(--mint); }
+        .hero .lead { margin-top: 22px; font-size: 19px; color: var(--hero-muted); max-width: 520px; text-wrap: pretty; }
+        .facts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 34px; font-size: 14.5px; color: var(--hero-muted); list-style: none; }
+        .facts li { display: flex; align-items: center; gap: 8px; }
+        .facts svg { color: var(--mint); flex: none; }
+
+        .checker { background: var(--hero-surface); border: 1px solid var(--hero-line); border-radius: 18px; padding: 26px; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+        .checker h2 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+        .checker p.sub { font-size: 14px; color: var(--hero-muted); margin: 4px 0 16px; }
+        .input-group { display: flex; gap: 8px; }
+        .input-group input { flex: 1; min-width: 0; padding: 13px 14px; background: #0c0e11; border: 1px solid var(--hero-line); border-radius: 10px; font: 15px var(--mono); color: var(--hero-ink); }
+        .input-group input::placeholder { color: #666e7a; }
+        .input-group input:focus { outline: none; border-color: var(--mint); box-shadow: 0 0 0 3px rgba(79,209,161,.18); }
+        .btn { padding: 13px 18px; background: var(--mint); color: #08110d; border: 0; border-radius: 10px; font: 600 15px var(--sans); cursor: pointer; white-space: nowrap; transition: transform .1s, filter .15s; }
+        .btn:hover { filter: brightness(1.08); }
+        .btn:active { transform: translateY(1px); }
+        .btn:disabled { opacity: .55; cursor: progress; }
+        #dns-results { margin-top: 14px; display: grid; gap: 8px; }
+        #dns-results:empty { display: none; }
+        .result-item { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 11px 13px; border-radius: 10px; font-size: 14.5px; line-height: 1.5; background: #0c0e11; border: 1px solid var(--hero-line); color: var(--hero-ink); overflow-wrap: anywhere; }
+        .result-item .ic { margin-top: 2px; }
+        .result-item.success .ic { color: var(--mint); }
+        .result-item.warning .ic { color: #e5b45a; }
+        .result-item.error .ic { color: #ff8a80; }
+        .result-item.error { border-color: rgba(255,138,128,.35); }
+        .result-item.loading .ic { color: var(--hero-muted); animation: spin 1s linear infinite; }
+        .result-item .fix { display: block; margin-top: 4px; color: var(--hero-muted); }
+        .result-item .fix b { color: var(--hero-ink); font-weight: 600; }
+        .result-item.summary { background: transparent; border-style: dashed; font-weight: 600; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .checker .hint { margin-top: 14px; font-size: 13px; color: #7d8592; }
+
+        /* sections */
+        section.block { padding: 88px 0; }
+        section.alt { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+        .kicker { font: 600 12.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+        h2.title { font-size: clamp(28px, 3.4vw, 38px); letter-spacing: -.03em; line-height: 1.12; font-weight: 700; text-wrap: balance; max-width: 680px; }
+        p.intro { margin-top: 14px; font-size: 18px; color: var(--muted); max-width: 640px; text-wrap: pretty; }
+        .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
+        .grid3 > *, .two > *, .hero .wrap > * { min-width: 0; }
+        .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+        section.alt .card { background: var(--bg); box-shadow: none; }
+        .card .num { font: 600 13px var(--mono); color: var(--accent); margin-bottom: 14px; }
+        .card h3 { font-size: 18px; letter-spacing: -.015em; margin-bottom: 6px; }
+        .card p { color: var(--muted); font-size: 15px; }
+        .card p + p { margin-top: 8px; }
+        .card .note { font-size: 13.5px; margin-top: 12px; }
+
+        .rec { margin-top: 16px; background: var(--hero); border-radius: 10px; border: 1px solid var(--hero-line); overflow: hidden; }
+        .card .rec { margin-top: auto; }
+        .card .rec-space { height: 16px; flex: none; }
+        .rec-head { display: flex; justify-content: space-between; align-items: center; padding: 7px 8px 7px 12px; border-bottom: 1px solid var(--hero-line); font: 500 11.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--hero-muted); }
+        .rec code { display: block; padding: 12px; color: var(--hero-ink); font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+        .rec code b { color: var(--mint); font-weight: 500; }
+        .copy { font: 500 11.5px var(--mono); color: var(--hero-muted); background: transparent; border: 1px solid var(--hero-line); border-radius: 6px; padding: 3px 9px; cursor: pointer; transition: all .15s; }
+        .copy:hover { color: var(--hero-ink); border-color: #3a404a; }
+        .copy.done { color: var(--mint); border-color: var(--mint); }
+
+        table.opts { width: 100%; border-collapse: collapse; margin-top: 36px; font-size: 15px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); display: table; }
+        .table-scroll { overflow-x: auto; }
+        table.opts th { text-align: left; font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 13px 18px; background: var(--surface-2); }
+        table.opts td { padding: 14px 18px; border-top: 1px solid var(--line); vertical-align: top; }
+        table.opts td:first-child { white-space: nowrap; }
+        table.opts td:last-child { color: var(--muted); }
+        table.opts code { background: var(--surface-2); padding: 2px 7px; border-radius: 6px; color: var(--ink); }
+
+        .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 44px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+        .flow div { padding: 24px; border-left: 1px solid var(--line); }
+        .flow div:first-child { border-left: 0; }
+        .flow b { display: block; font: 600 12.5px var(--mono); color: var(--accent); margin-bottom: 8px; letter-spacing: .04em; }
+        .flow h3 { font-size: 16.5px; margin-bottom: 4px; letter-spacing: -.01em; }
+        .flow p { font-size: 14.5px; color: var(--muted); }
+
+        .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .list { list-style: none; margin-top: 12px; }
+        .list li { position: relative; padding: 8px 0 8px 26px; font-size: 15px; color: var(--muted); border-top: 1px solid var(--line); }
+        .list li:first-child { border-top: 0; }
+        .list li::before { content: ""; position: absolute; left: 4px; top: 16px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+        .list.no li::before { background: transparent; border: 2px solid var(--muted); }
+        .list b { color: var(--ink); font-weight: 600; }
+
+        details { border-top: 1px solid var(--line); }
+        details:last-of-type { border-bottom: 1px solid var(--line); }
+        summary { cursor: pointer; list-style: none; padding: 20px 36px 20px 0; font-weight: 600; font-size: 17px; letter-spacing: -.01em; position: relative; }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: "+"; position: absolute; right: 4px; top: 16px; font: 400 24px var(--mono); color: var(--muted); transition: transform .2s; }
+        details[open] summary::after { transform: rotate(45deg); }
+        details p { padding: 0 40px 22px 0; color: var(--muted); max-width: 760px; }
+        details p + p { margin-top: -10px; }
+        details a { color: var(--accent); }
+        .faq { margin-top: 36px; max-width: 860px; }
+
+        .cta { background: var(--hero); color: var(--hero-ink); border-radius: 22px; padding: 56px 40px; text-align: center; border: 1px solid var(--hero-line); }
+        .cta h2 { font-size: clamp(26px, 3.2vw, 36px); letter-spacing: -.03em; line-height: 1.15; }
+        .cta p { color: var(--hero-muted); margin: 12px auto 26px; max-width: 520px; }
+        .cta a.btn { display: inline-block; text-decoration: none; }
+
+        footer { padding: 44px 0 56px; color: var(--muted); font-size: 14.5px; }
+        footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; align-items: center; }
+        footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
+        footer a { text-decoration: none; }
+        footer a:hover { color: var(--ink); }
+
+        @media (max-width: 960px) {
+            .hero { padding: 56px 0 64px; }
+            .hero .wrap { grid-template-columns: 1fr; gap: 40px; }
+            .grid3, .two { grid-template-columns: 1fr; }
+            .flow { grid-template-columns: 1fr 1fr; }
+            .flow div:nth-child(3) { border-left: 0; }
+            .flow div:nth-child(n+3) { border-top: 1px solid var(--line); }
+            section.block { padding: 64px 0; }
+        }
+        @media (max-width: 560px) {
+            .wrap { padding: 0 16px; }
+            .flow { grid-template-columns: 1fr; }
+            .flow div { border-left: 0; border-top: 1px solid var(--line); }
+            .flow div:first-child { border-top: 0; }
+            .input-group { flex-direction: column; }
+            .cta { padding: 40px 22px; }
+            summary { font-size: 16px; }
+            table.opts, table.opts tbody { display: block; }
+            table.opts thead { display: none; }
+            table.opts tr { display: block; padding: 14px 16px; border-top: 1px solid var(--line); }
+            table.opts tr:first-child { border-top: 0; }
+            table.opts td { display: block; padding: 2px 0; border: 0; white-space: normal !important; }
+            table.opts td:nth-child(2)::before { content: "Default: "; color: var(--muted); }
+        }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+    </style>
+</head>
+<body>
+    <header class="nav">
+        <div class="wrap">
+            <a class="brand" href="/">catchall<span>.mx</span></a>
+            <nav class="nav-links">
+                <a href="#setup">Setup</a>
+                <a href="#rules">Rules</a>
+                <a href="#privacy">Privacy</a>
+                <a href="#faq">FAQ</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">GitHub</a>
+                <a class="pill" href="#check">Check my domain</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" id="check">
+        <div class="wrap">
+            <div>
+                <div class="eyebrow"><i></i> Free forever. No account.</div>
+                <h1>Every address at your domain, <em>one inbox.</em></h1>
+                <p class="lead">Catch-all email forwarding that you configure with two DNS records. No sign-up, no dashboard, and we do not keep your mail.</p>
+                <ul class="facts">
+                    <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Set up in two minutes</li>
+                    <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Zero data retention</li>
+                    <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>DKIM-signed delivery</li>
+                    <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open source</li>
+                </ul>
+            </div>
+
+            <div class="checker">
+                <h2>Check your domain</h2>
+                <p class="sub">See what is set up, what is missing, and exactly what to change.</p>
+                <div class="input-group">
+                    <input type="text" id="domain-input" placeholder="yourdomain.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Your domain" onkeydown="if(event.key==='Enter') checkDNS()">
+                    <button class="btn" id="check-btn" onclick="checkDNS()">Check DNS</button>
+                </div>
+                <div id="dns-results" aria-live="polite"></div>
+                <p class="hint">We only read your public DNS records. Nothing is saved.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="block" id="setup">
+        <div class="wrap">
+            <div class="kicker">Setup</div>
+            <h2 class="title">Two records, then one click.</h2>
+            <p class="intro">Add these at your DNS provider, on the domain itself (host <code>@</code>). Your DNS is the control panel.</p>
+            <div class="grid3">
+                <div class="card">
+                    <div class="num">01</div>
+                    <h3>Point your mail to us</h3>
+                    <p>An MX record tells senders where to deliver mail for your domain.</p>
+                    <div class="rec-space"></div>
+                    <div class="rec">
+                        <div class="rec-head"><span>MX · priority 10</span><button class="copy" data-copy="mail.catchall.mx">Copy</button></div>
+                        <code>mail.catchall.mx</code>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="num">02</div>
+                    <h3>Say where it should go</h3>
+                    <p>A TXT record names the mailbox that receives everything.</p>
+                    <div class="rec-space"></div>
+                    <div class="rec">
+                        <div class="rec-head"><span>TXT</span><button class="copy" data-copy="catchall-forward=you@example.com">Copy</button></div>
+                        <code>catchall-forward=<b>you@example.com</b></code>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="num">03</div>
+                    <h3>Confirm once</h3>
+                    <p>Send any email to your domain. We send a confirmation link to your mailbox, so nobody can forward mail to an address that did not agree.</p>
+                    <p class="note">No link in your inbox? Check the spam folder and mark it "Not spam".</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="block alt" id="rules">
+        <div class="wrap">
+            <div class="kicker">Rules</div>
+            <h2 class="title">Control each address, still without an account.</h2>
+            <p class="intro">Optional TXT records decide what happens to individual addresses. Use the part before the @, and separate several entries with commas.</p>
+            <div class="grid3">
+                <div class="card">
+                    <h3>Route</h3>
+                    <p>Send one address to a different mailbox. That mailbox confirms once before it receives anything.</p>
+                    <div class="rec-space"></div>
+                    <div class="rec">
+                        <div class="rec-head"><span>TXT</span><button class="copy" data-copy="catchall-route=billing:accounts@example.com">Copy</button></div>
+                        <code>catchall-route=<b>billing:accounts@example.com</b></code>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Block</h3>
+                    <p>Refuse an address that started attracting junk. <code>*</code> matches anything, so <code>news-*</code> covers a whole family.</p>
+                    <div class="rec-space"></div>
+                    <div class="rec">
+                        <div class="rec-head"><span>TXT</span><button class="copy" data-copy="catchall-block=oldshop,news-*">Copy</button></div>
+                        <code>catchall-block=<b>oldshop,news-*</b></code>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Allow-list</h3>
+                    <p>Accept only the addresses you name and refuse the rest. Routed addresses are always accepted.</p>
+                    <div class="rec-space"></div>
+                    <div class="rec">
+                        <div class="rec-head"><span>TXT</span><button class="copy" data-copy="catchall-only=info,sales,me">Copy</button></div>
+                        <code>catchall-only=<b>info,sales,me</b></code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-scroll">
+                <table class="opts">
+                    <thead><tr><th>More options</th><th>Default</th><th>What it does</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>catchall-limit=200</code></td><td>50</td><td>Maximum emails forwarded per day for the domain.</td></tr>
+                        <tr><td><code>catchall-spam=strict</code></td><td>moderate</td><td>Spam filtering level: <code>strict</code>, <code>moderate</code> or <code>off</code>.</td></tr>
+                        <tr><td><code>catchall-size=10</code></td><td>5</td><td>Largest message accepted, in megabytes.</td></tr>
+                        <tr><td><a href="/dkim/setup" style="color: var(--accent); font-weight: 600;">DKIM for your domain →</a></td><td>off</td><td>Sign forwarded mail with your own domain's key instead of ours.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="block" id="privacy">
+        <div class="wrap">
+            <div class="kicker">Privacy</div>
+            <h2 class="title">Your mail passes through. It does not stay.</h2>
+            <p class="intro">There are no accounts, so there is no profile of you to keep. This is everything that happens to a message.</p>
+            <div class="flow">
+                <div><b>01</b><h3>Arrives</h3><p>We read your domain's DNS records to learn where it goes. Blocked addresses are refused before the message is even sent.</p></div>
+                <div><b>02</b><h3>Checked</h3><p>Spam and forged senders are filtered on our own server. Message content is never sent to a third party.</p></div>
+                <div><b>03</b><h3>Forwarded</h3><p>Delivered to your mailbox over an encrypted connection where your provider supports it, and signed so it passes authentication.</p></div>
+                <div><b>04</b><h3>Gone</h3><p>Once your provider accepts the message, our copy is deleted. There is no archive and no backup of mail.</p></div>
+            </div>
+            <div class="two">
+                <div class="card">
+                    <h3>What we keep</h3>
+                    <ul class="list">
+                        <li><b>Your domain's status:</b> that it is confirmed, with each confirmed destination stored as a fingerprint.</li>
+                        <li><b>Daily counters</b> per domain, to enforce limits.</li>
+                        <li><b>Delivery logs for 7 days:</b> domain, destination and time, for troubleshooting. Then they are deleted.</li>
+                        <li><b>Mail on hold:</b> messages waiting for a destination to confirm, or held as suspected forgeries, for 7 days at most. Then they are deleted.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>What we never do</h3>
+                    <ul class="list no">
+                        <li><b>No reading or mining</b> of message content.</li>
+                        <li><b>No tracking pixels</b> or link rewriting in your mail.</li>
+                        <li><b>No selling or sharing</b> of addresses or metadata.</li>
+                        <li><b>No lock-in:</b> remove the two DNS records and we are out of the path.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="block alt" id="faq">
+        <div class="wrap">
+            <div class="kicker">Questions</div>
+            <h2 class="title">Good to know before you switch.</h2>
+            <div class="faq">
+                <details>
+                    <summary>Is it really free?</summary>
+                    <p>Yes, and it will stay free. There is no paid tier and no account to upgrade. Daily limits exist only to keep the service healthy for everyone.</p>
+                </details>
+                <details>
+                    <summary>Why does some forwarded mail say "via CatchAll" in the sender name?</summary>
+                    <p>Mail providers reject forwarded messages that cannot prove where they came from. When the original sender signed their message, we forward it untouched. When they did not, we send it from our own address, keep the real sender in the name and in Reply-To, and sign it, so it reaches your inbox and your replies still go to the right person.</p>
+                </details>
+                <details>
+                    <summary>The confirmation email or a forwarded message went to spam. What now?</summary>
+                    <p>Mark it "Not spam" once. That is the strongest signal your provider takes, and later mail usually follows it to the inbox. Adding <code>forwarded@catchall.mx</code> and <code>verify@catchall.mx</code> to your contacts helps too.</p>
+                </details>
+                <details>
+                    <summary>What happens if I change the forwarding address?</summary>
+                    <p>The new mailbox receives a confirmation link the next time mail arrives, and forwarding resumes as soon as it is clicked. Mail that arrives in between is held for it.</p>
+                </details>
+                <details>
+                    <summary>Can I send or reply from my domain?</summary>
+                    <p>CatchAll.mx is receive-only. Replies leave from your own mailbox. Most mail providers let you add your domain address as a "send as" identity if you have an outgoing mail server for it.</p>
+                </details>
+                <details>
+                    <summary>Does my domain need to be new or unused?</summary>
+                    <p>No, but mail for a domain is delivered to one place. If the domain already has mailboxes elsewhere, pointing its MX record here moves all of its incoming mail to forwarding.</p>
+                </details>
+                <details>
+                    <summary>Someone is abusing the service. How do I report it?</summary>
+                    <p>Use the <a href="/report">abuse report form</a>. Domains and destinations used for abuse are blocked.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <section class="block">
+        <div class="wrap">
+            <div class="cta">
+                <h2>Two DNS records from now, you are done.</h2>
+                <p>Add them, then check your domain. We will tell you exactly what is missing.</p>
+                <a class="btn" href="#check" onclick="setTimeout(function(){document.getElementById('domain-input').focus()}, 400)">Check my domain</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="wrap">
+            <div><span class="mono" style="color: var(--ink); font-weight: 600;">catchall.mx</span> &nbsp;·&nbsp; Email forwarding configured in DNS</div>
+            <nav>
+                <a href="/dkim/setup">DKIM setup</a>
+                <a href="/report">Report abuse</a>
+                <a href="https://github.com/ntngyl/catchall.mx" target="_blank" rel="noopener">Source code</a>
+            </nav>
+        </div>
+    </footer>
+
+    <script>
+        const ICONS = {
+            success: '<svg class="ic" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 9.3l2.4 2.3 4.6-4.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            error: '<svg class="ic" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 6.2l5.6 5.6M11.8 6.2l-5.6 5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            warning: '<svg class="ic" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l7.5 13.5h-15L9 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 7.2v3.6M9 13v.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            info: '<svg class="ic" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M9 8.2v4.6M9 5.2v.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            loading: '<svg class="ic" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1.5a7.5 7.5 0 1 0 7.5 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+        };
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g,
+            (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        const item = (kind, html, cls) =>
+            `<div class="result-item ${cls || (kind === 'info' ? 'warning' : kind)}">${ICONS[kind]}<div>${html}</div></div>`;
+
+        async function checkDNS() {
+            const domainInput = document.getElementById('domain-input');
+            const checkBtn = document.getElementById('check-btn');
+            const resultsDiv = document.getElementById('dns-results');
+            const domain = domainInput.value.trim();
+
+            if (!domain) {
+                resultsDiv.innerHTML = item('error', 'Enter your domain first, for example <span class="mono">example.com</span>.');
+                domainInput.focus();
+                return;
+            }
+
+            checkBtn.disabled = true;
+            checkBtn.textContent = 'Checking…';
+            resultsDiv.innerHTML = item('loading', 'Reading DNS records…');
+
+            try {
+                const response = await fetch(`/api/check-dns?domain=${encodeURIComponent(domain)}`);
+                const data = await response.json();
+                let html = '';
+
+                if (data.error) {
+                    html = item('error', esc(data.error));
+                } else {
+                    if (data.mx_record && data.mx_record.valid) {
+                        html += item('success', `MX record points to <span class="mono">${esc(data.mx_record.value)}</span>`);
+                    }
+                    const forward = (data.txt_records || {})['catchall-forward'];
+                    if (forward && forward.valid) {
+                        html += item('success', `Forwards to <span class="mono">${esc(forward.value)}</span>`);
+                    }
+
+                    // Specific problems found, each with what to change
+                    (data.issues || []).forEach((issue) => {
+                        const kind = ICONS[issue.level] ? issue.level : 'warning';
+                        const fix = issue.fix ? `<span class="fix"><b>Fix:</b> ${esc(issue.fix)}</span>` : '';
+                        html += item(kind, esc(issue.text) + fix);
+                    });
+
+                    const rules = data.rules || {routes: [], block: [], only: []};
+                    (rules.routes || []).forEach((rt) => {
+                        html += item('success', `Route: <span class="mono">${esc(rt.address)}</span> → <span class="mono">${esc(rt.to)}</span>`);
+                    });
+                    if ((rules.block || []).length) {
+                        html += item('success', `Blocked: <span class="mono">${esc(rules.block.join(', '))}</span>`);
+                    }
+                    if ((rules.only || []).length) {
+                        html += item('success', `Allow-list: <span class="mono">${esc(rules.only.join(', '))}</span>`);
+                    }
+
+                    if (data.status === 'ready') {
+                        const limit = (data.txt_records || {})['catchall-limit'];
+                        const perDay = (limit && limit.found && limit.valid) ? esc(limit.value) : '50 (default)';
+                        html += item('info', `Daily limit: ${perDay} emails`, 'success');
+                    }
+                    if (data.verified) {
+                        html += item('success', 'Confirmed. Forwarding is active.');
+                    }
+
+                    const kind = data.status === 'ready' ? 'success' : (data.status === 'blocked' ? 'error' : 'warning');
+                    html += item(kind, esc(data.message), kind + ' summary');
+                }
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                resultsDiv.innerHTML = item('error', 'Could not run the check. Please try again in a moment.');
+            } finally {
+                checkBtn.disabled = false;
+                checkBtn.textContent = 'Check DNS';
+            }
+        }
+
+        // A link like /?domain=example.com runs the check straight away
+        const preset = new URLSearchParams(location.search).get('domain');
+        if (preset) {
+            document.getElementById('domain-input').value = preset;
+            checkDNS();
+        }
+
+        document.querySelectorAll('.copy').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const text = btn.dataset.copy;
+                try {
+                    await navigator.clipboard.writeText(text);
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = text; document.body.appendChild(ta); ta.select();
+                    try { document.execCommand('copy'); } catch (e2) {}
+                    ta.remove();
+                }
+                btn.textContent = 'Copied';
+                btn.classList.add('done');
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1600);
+            });
+        });
+    </script>
+</body>
+</html>
