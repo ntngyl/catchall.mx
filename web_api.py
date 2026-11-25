@@ -31,7 +31,7 @@ def add_shared_stylesheet(response):
             html = response.get_data(as_text=True)
             if '</head>' in html and '/app.css' not in html:
                 response.set_data(html.replace(
-                    '</head>', '<link rel="stylesheet" href="/app.css?v=1"></head>', 1))
+                    '</head>', '<link rel="stylesheet" href="/app.css?v=3"></head>', 1))
     except Exception:
         pass
     return response
@@ -162,14 +162,14 @@ def dkim_setup():
     </style>
 </head>
 <body>
-    <h1>🔐 DKIM Setup</h1>
+    <h1>DKIM Setup</h1>
     <p>Enter your domain to generate a DKIM key:</p>
     <form action="/dkim/setup" method="get">
         <input type="text" name="domain" placeholder="example.com" required>
         <button type="submit">Generate DKIM Key</button>
     </form>
     <p style="margin-top: 30px; color: #666;">
-        <a href="https://catchall.mx">← Back to CatchAll.mx</a>
+        <a href="https://catchall.mx">Back to CatchAll.mx</a>
     </p>
 </body>
 </html>
@@ -191,11 +191,11 @@ def dkim_setup():
     </style>
 </head>
 <body>
-    <h1>❌ DKIM Setup Error</h1>
+    <h1>DKIM Setup Error</h1>
     <div class="error">
         <p>{result}</p>
     </div>
-    <p><a href="/dkim/setup">← Try again</a></p>
+    <p><a href="/dkim/setup">Try again</a></p>
 </body>
 </html>
 """, 500
@@ -226,14 +226,14 @@ def dkim_setup():
     </style>
 </head>
 <body>
-    <h1>🔐 DKIM Key Generated</h1>
+    <h1>DKIM Key Generated</h1>
 
     <div class="success">
-        <strong>✅ DKIM key generated for {domain}</strong>
+        <strong>DKIM key generated for {domain}</strong>
     </div>
 
     <div class="steps">
-        <h3>📋 Steps to Enable DKIM:</h3>
+        <h3>Steps to Enable DKIM:</h3>
         <ol>
             <li>Add the DNS record below to your domain</li>
             <li>Wait for DNS propagation (usually 5-15 minutes)</li>
@@ -264,10 +264,10 @@ def dkim_setup():
         <strong>Note:</strong> The full DNS record will be: <code>{result['full_host']}</code>
     </p>
 
-    <a href="/dkim/verify?domain={domain}" class="verify-btn">Verify DKIM →</a>
+    <a href="/dkim/verify?domain={domain}" class="verify-btn">Verify DKIM</a>
 
     <p style="margin-top: 30px; color: #666;">
-        <a href="https://catchall.mx">← Back to CatchAll.mx</a>
+        <a href="https://catchall.mx">Back to CatchAll.mx</a>
     </p>
 
     <script>
@@ -307,7 +307,7 @@ def dkim_verify():
     </style>
 </head>
 <body>
-    <h1>🔍 Verify DKIM</h1>
+    <h1>Verify DKIM</h1>
     <form action="/dkim/verify" method="get">
         <input type="text" name="domain" placeholder="example.com" required>
         <button type="submit">Verify DKIM</button>
@@ -335,14 +335,14 @@ def dkim_verify():
 </head>
 <body>
     <div class="success">
-        <div class="icon">✅</div>
+        <div class="icon"></div>
         <h1>DKIM Enabled!</h1>
         <p>{message}</p>
         <p style="margin-top: 20px; color: #666;">
             All emails forwarded from <strong>*@{domain}</strong> will now be signed with DKIM.
         </p>
     </div>
-    <a href="https://catchall.mx" class="home-link">← Back to CatchAll.mx</a>
+    <a href="https://catchall.mx" class="home-link">Back to CatchAll.mx</a>
 </body>
 </html>
 """
@@ -364,7 +364,7 @@ def dkim_verify():
 </head>
 <body>
     <div class="error">
-        <div class="icon">❌</div>
+        <div class="icon"></div>
         <h1>Verification Failed</h1>
         <p>{message}</p>
         <p style="margin-top: 20px; color: #666;">
@@ -410,12 +410,12 @@ def verify_route(domain):
 
     if action == 'block':
         status_class = 'blocked' if success else 'error'
-        emoji = '🚫' if success else '❌'
+        emoji = '' if success else ''
         title = 'Domain Blocked' if success else 'Verification Failed'
         bg_color = '#f44336' if success else '#666'
     else:
         status_class = 'success' if success else 'error'
-        emoji = '✅' if success else '❌'
+        emoji = '' if success else ''
         title = 'Verification Successful!' if success else 'Verification Failed'
         bg_color = '#4CAF50' if success else '#666'
 
@@ -479,7 +479,7 @@ def verify_route(domain):
         <div class="icon">{emoji}</div>
         <div class="title">{title}</div>
         <div class="message">{message}</div>
-        <a href="https://catchall.mx" class="home-link">← Back to CatchAll.mx</a>
+        <a href="https://catchall.mx" class="home-link">Back to CatchAll.mx</a>
     </div>
 </body>
 </html>
@@ -538,7 +538,7 @@ def report_abuse():
         <button type="submit">Submit Report</button>
     </form>
     <p style="margin-top: 30px; color: #666;">
-        <a href="https://catchall.mx">← Back to CatchAll.mx</a>
+        <a href="https://catchall.mx">Back to CatchAll.mx</a>
     </p>
 </body>
 </html>
@@ -564,7 +564,7 @@ def report_abuse():
 <h1 style="color:#c62828;">Domain Not Using CatchAll.mx</h1>
 <p>The domain <strong>{domain}</strong> does not point its MX record to mail.catchall.mx.</p>
 <p>If this is incorrect, please try again.</p>
-<a href="/report">← Back</a>
+<a href="/report">Back</a>
 </body></html>
 """, 400
     except Exception as e:
@@ -573,7 +573,7 @@ def report_abuse():
 <html><body style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:20px;">
 <h1 style="color:#c62828;">DNS Lookup Failed</h1>
 <p>Could not verify MX records for <strong>{domain}</strong>.</p>
-<a href="/report">← Back</a>
+<a href="/report">Back</a>
 </body></html>
 """, 400
 
@@ -602,7 +602,7 @@ def report_abuse():
         <h1>Report Submitted</h1>
         <p>Thank you. We have received your report for <strong>{domain}</strong>.</p>
         <p>The domain has been temporarily blocked pending investigation.</p>
-        <a href="https://catchall.mx" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#667eea;color:white;text-decoration:none;border-radius:6px;">← Back to CatchAll.mx</a>
+        <a href="https://catchall.mx" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#667eea;color:white;text-decoration:none;border-radius:6px;">Back to CatchAll.mx</a>
     </div>
 </body>
 </html>
@@ -692,7 +692,7 @@ def quarantine_dashboard():
         </tbody>
     </table>
     <p style="margin-top:30px;color:#666;">
-        <a href="https://catchall.mx">← Back to CatchAll.mx</a>
+        <a href="https://catchall.mx">Back to CatchAll.mx</a>
     </p>
 </body>
 </html>
@@ -725,7 +725,7 @@ def quarantine_view():
 <body>
     <h2>Quarantined Email</h2>
     <pre>{safe_content}</pre>
-    <p><a href="/quarantine">← Back to Quarantine</a></p>
+    <p><a href="/quarantine">Back to Quarantine</a></p>
 </body>
 </html>
 """
@@ -772,7 +772,7 @@ def quarantine_release():
 <html><body style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:20px;">
 <h1 style="color:#2e7d32;">Released</h1>
 <p>Email released and forwarded to <strong>{forward_to}</strong>.</p>
-<a href="/quarantine">← Back</a>
+<a href="/quarantine">Back</a>
 </body></html>
 """
     else:
@@ -781,7 +781,7 @@ def quarantine_release():
 <html><body style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:20px;">
 <h1 style="color:#c62828;">Failed</h1>
 <p>Could not release email: {message}</p>
-<a href="/quarantine">← Back</a>
+<a href="/quarantine">Back</a>
 </body></html>
 """, 500
 
@@ -800,7 +800,7 @@ def quarantine_delete():
 <html><body style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:20px;">
 <h1 style="color:#2e7d32;">Deleted</h1>
 <p>Email permanently deleted.</p>
-<a href="/quarantine">← Back</a>
+<a href="/quarantine">Back</a>
 </body></html>
 """
     else:
@@ -809,7 +809,7 @@ def quarantine_delete():
 <html><body style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:20px;">
 <h1 style="color:#c62828;">Failed</h1>
 <p>Could not delete email: {message}</p>
-<a href="/quarantine">← Back</a>
+<a href="/quarantine">Back</a>
 </body></html>
 """, 500
 
