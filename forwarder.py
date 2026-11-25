@@ -6,6 +6,7 @@ Email forwarding module
 import smtplib
 import dns.resolver
 import logging
+from from_rewrite import prepare_for_forward
 
 # Outbound SMTP must leave over IPv4: SPF for catchall.mx lists only the IPv4
 # address and the IPv6 address has no PTR. Binding to an IPv4 wildcard makes
@@ -32,6 +33,9 @@ def forward_email(email_content, forward_to, sender, domain):
     Returns True on success, False on failure
     """
     
+    # Keep the From: header DMARC-aligned (see from_rewrite.py)
+    email_content = prepare_for_forward(email_content, domain)
+
     # Get destination domain and MX servers
     dest_domain = forward_to.split('@')[1]
     mx_servers = get_mx_servers(dest_domain)

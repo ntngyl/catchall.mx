@@ -13,6 +13,7 @@ import os
 import dkim  # pip install dkimpy
 from spam_detector import should_block_spam, should_quarantine, validate_sender_authenticity
 from abuse import is_abuse_blocked
+from from_rewrite import prepare_for_forward
 
 # Postfix pipe(8) treats this exit status as a temporary failure: the message
 # stays in the Postfix queue and is retried instead of being bounced/lost.
@@ -157,8 +158,12 @@ def queue_email_and_verify(domain, recipient, email_content):
 def forward_email_now(domain, forward_to, email_content):
     """Forward email immediately via SMTP with optional DKIM signing"""
 
+    # Keep the From: header DMARC-aligned (rewrites it and signs as
+    # catchall.mx when the original sender's DKIM cannot carry alignment)
+    prepared = prepare_for_forward(email_content, domain)
+
     # Sign email with DKIM if enabled
-    signed_content = sign_email_with_dkim(email_content, domain)
+    signed_content = sign_email_with_dkim(prepared, domain)
 
     dest_domain = forward_to.split('@')[1]
     mx_servers = get_mx_servers(dest_domain)
@@ -234,7 +239,9 @@ def main():
         log(f"Domain {domain} is BLOCKED by {forward_to} - discarding email")
         sys.exit(0)
 
-    email_content = sys.stdin.read()
+    # Read raw bytes: mail is not always valid UTF-8, and a strict decode
+    # would crash the forwarder (surrogateescape round-trips every byte).
+    email_content = sys.stdin.buffer.read().decode('utf-8', 'surrogateescape')
 
     # Parse subject for spam detection
     subject = ''

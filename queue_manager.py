@@ -43,7 +43,7 @@ def queue_email(domain, email_data):
 
     # Save to disk
     email_path = os.path.join(domain_dir, f"{email_id}.eml")
-    with open(email_path, 'w') as f:
+    with open(email_path, 'w', encoding='utf-8', errors='surrogateescape') as f:
         f.write(email_data)
 
     # Track in Redis
@@ -90,7 +90,7 @@ def flush_queue(domain, forward_to):
         if os.path.exists(email_path):
             try:
                 logging.info(f"Forwarding queued email: {email_id}")
-                with open(email_path, 'r') as f:
+                with open(email_path, 'r', encoding='utf-8', errors='surrogateescape') as f:
                     email_data = f.read()
 
                 if forward_email(email_data, forward_to, f"queued@{domain}", domain):
