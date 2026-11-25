@@ -13,6 +13,7 @@ from verification import verify_domain_token
 from dkim_manager import generate_dkim_key, verify_dkim_dns, is_dkim_enabled, get_dns_record
 from quarantine_manager import get_quarantined_emails, release_email, delete_email, get_email_content
 import logging
+from html import escape as html_escape
 
 logging.basicConfig(
     filename='/var/log/catchall/verification.log',
@@ -427,79 +428,54 @@ def verify_route(domain):
 
     success, message = verify_domain_token(domain, token, action)
 
-    if action == 'block':
-        status_class = 'blocked' if success else 'error'
-        emoji = '' if success else ''
-        title = 'Domain Blocked' if success else 'Verification Failed'
-        bg_color = '#f44336' if success else '#666'
+    shown = domain.split('~')[0]
+    if success and action == 'block':
+        title, tone = 'Blocked', 'bad'
+        steps = ('<p class="soft">Nothing from this domain will be sent to your address. '
+                 'If it was used to send you unwanted mail, you can also <a href="/report">report it</a>.</p>')
+        button = '<a class="btn" href="/">Go to catchall.mx</a>'
+    elif success:
+        title, tone = 'Forwarding is on', 'good'
+        steps = (f'<p class="soft">To try it, send an email to any address at {html_escape(shown)} from a different '
+                 'mailbox. It should arrive in a few seconds; if it is not in the inbox, look in spam.</p>')
+        button = (f'<a class="btn" href="/setup/?domain={html_escape(shown)}">Add rules or DKIM</a>'
+                  '<a class="btn ghost" href="/">Go to catchall.mx</a>')
     else:
-        status_class = 'success' if success else 'error'
-        emoji = '' if success else ''
-        title = 'Verification Successful!' if success else 'Verification Failed'
-        bg_color = '#4CAF50' if success else '#666'
+        title, tone = 'This link did not work', 'bad'
+        steps = ('<p class="soft">Confirmation links work once and expire after 24 hours. '
+                 'Check the domain again to see its current state or to send a new link.</p>')
+        button = f'<a class="btn" href="/?domain={html_escape(shown)}">Check the domain</a>'
 
-    html = f"""
-<!DOCTYPE html>
-<html>
+    html = f"""<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
     <title>{title} - CatchAll.mx</title>
+    <link rel="stylesheet" href="/site.css?v=3">
+    <!-- own stylesheet; /app.css is not used on this page -->
     <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            text-align: center;
-        }}
-        .result-box {{
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            padding: 40px;
-            margin-top: 40px;
-        }}
-        .icon {{
-            font-size: 64px;
-            margin-bottom: 20px;
-        }}
-        .title {{
-            color: {bg_color};
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }}
-        .message {{
-            font-size: 16px;
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }}
-        .home-link {{
-            display: inline-block;
-            margin-top: 20px;
-            color: #2196F3;
-            text-decoration: none;
-            padding: 12px 24px;
-            border: 2px solid #2196F3;
-            border-radius: 6px;
-            transition: all 0.3s;
-            font-weight: 600;
-        }}
-        .home-link:hover {{
-            background: #2196F3;
-            color: white;
-        }}
+        .result {{ max-width: 620px; padding: 72px 0 96px; }}
+        .result .state {{ font: 600 13px var(--mono); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 14px; }}
+        .result .state.good {{ color: var(--good); }} .result .state.bad {{ color: var(--bad); }}
+        .result .msg {{ margin: 18px 0 14px; font-size: 18.5px; line-height: 1.55; }}
+        .result .actions {{ margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; }}
+        .btn.ghost {{ background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }}
     </style>
 </head>
 <body>
-    <div class="result-box">
-        <div class="icon">{emoji}</div>
-        <div class="title">{title}</div>
-        <div class="message">{message}</div>
-        <a href="https://catchall.mx" class="home-link">Back to CatchAll.mx</a>
-    </div>
+    <header class="top"><div class="wrap">
+        <a class="logo" href="/"><i></i>catchall.mx</a>
+        <nav><a class="cta" href="/setup/">Record builder</a></nav>
+    </div></header>
+    <main><div class="wrap"><div class="result">
+        <p class="state {tone}">{'Confirmed' if success and action != 'block' else ('Blocked' if success else 'Not confirmed')}</p>
+        <h1>{title}</h1>
+        <p class="msg">{message}</p>
+        {steps}
+        <div class="actions">{button}</div>
+    </div></div></main>
 </body>
 </html>
 """

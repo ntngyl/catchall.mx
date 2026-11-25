@@ -248,19 +248,19 @@ def verify_domain_token(name, provided_token, action):
     # Get stored verification data
     verify_data = r.get(f"verify:{name}")
     if not verify_data or not verify_data.startswith("pending:"):
-        return False, "Invalid or expired verification link"
+        return False, "This confirmation link has already been used or has expired."
 
     # Parse: pending:token:recipient_email
     parts = verify_data.split(":", 2)
     if len(parts) != 3:
-        return False, "Invalid verification data"
+        return False, "This confirmation link is not valid."
 
     stored_token = parts[1]
     recipient_email = parts[2]
 
     # Verify token matches
     if provided_token != stored_token:
-        return False, "Invalid verification token"
+        return False, "This confirmation link is not valid. Use the newest email we sent you."
 
     # Handle action
     if action == 'block':
@@ -270,7 +270,7 @@ def verify_domain_token(name, provided_token, action):
         r.delete(f"queue:{name}")
 
         logging.info(f"Domain {domain} BLOCKED by its destination")
-        return True, f"<strong>{domain}</strong> has been blocked. You will NOT receive any emails from this domain."
+        return True, f"<strong>{domain}</strong> is blocked from forwarding to you."
 
     elif action == 'accept':
         from queue_manager import flush_queue
@@ -292,8 +292,8 @@ def verify_domain_token(name, provided_token, action):
 
         logging.info(f"Domain {domain} ACCEPTED by its destination, forwarded {count} emails")
         if count:
-            return True, f"<strong>{domain}</strong> verified! We've forwarded <strong>{count}</strong> email(s) to you. Future emails from this domain will be forwarded automatically."
-        return True, f"<strong>{domain}</strong> is confirmed. Emails sent to this domain will now be forwarded to you automatically."
+            return True, f"Mail for <strong>{domain}</strong> is now forwarded to you. The <strong>{count}</strong> message{'s' if count != 1 else ''} that arrived while it was waiting {'have' if count != 1 else 'has'} just been sent on."
+        return True, f"Mail for <strong>{domain}</strong> is now forwarded to you."
 
     else:
         return False, "Invalid action"
