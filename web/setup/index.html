@@ -122,49 +122,35 @@
         details.kept summary { cursor: pointer; font-weight: 600; }
         details.kept code { display: block; margin-top: 6px; overflow-wrap: anywhere; }
 
-        /* ---- plain look, matching the homepage ---- */
-        :root { --bg: #fbf9f4; --surface: #fbf9f4; --surface-2: #f2eee4; --ink: #1c1b19; --muted: #5f5b53; --line: #dcd6c8;
-                --accent: #1d6b3a; --accent-soft: #e8f1e6; --warn: #8a5a00; --warn-soft: #f6ecd4; --bad: #a3281f; --bad-soft: #f6e3df;
-                --hero: var(--bg); --hero-ink: var(--ink); --hero-muted: var(--muted); --hero-line: var(--line); --mint: #1f4b99;
-                --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+        /* ---- look shared with the homepage ---- */
+        :root { --bg: #ffffff; --surface: #ffffff; --surface-2: #f6f6f7; --ink: #0a0a0a; --muted: #5c6068; --line: #e7e8eb;
+                --accent: #0f7a3d; --accent-soft: #e6f4ec; --warn: #96600a; --warn-soft: #fbf1dc; --bad: #c4281c; --bad-soft: #fdeceb;
+                --hero: var(--bg); --hero-ink: var(--ink); --hero-muted: var(--muted); --hero-line: var(--line); --mint: #2b59ff;
                 --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                --radius: 5px; --shadow: none; }
+                --radius: 14px; --shadow: none; }
         @media (prefers-color-scheme: dark) {
-            :root { --bg: #171613; --surface: #171613; --surface-2: #201e1a; --ink: #ebe7dd; --muted: #a39d90; --line: #37342d;
-                    --accent: #7fcf9a; --accent-soft: #1c2a20; --warn: #e3b866; --warn-soft: #2b2415; --bad: #f0938a; --bad-soft: #2e1b18;
-                    --mint: #8fb4f0; --shadow: none; }
+            :root { --bg: #0b0b0d; --surface: #0b0b0d; --surface-2: #141417; --ink: #f4f4f5; --muted: #a3a7b0; --line: #24252a;
+                    --accent: #5fd08c; --accent-soft: #12241a; --warn: #e6b45c; --warn-soft: #2a2212; --bad: #ff8b80; --bad-soft: #2d1614;
+                    --mint: #7d9bff; --shadow: none; }
         }
-        body { font-size: 16.5px; }
-        body::before { content: ""; display: block; height: 7px;
-            background: repeating-linear-gradient(-45deg, #c0392b 0 14px, var(--bg) 14px 28px, #27508f 28px 42px, var(--bg) 42px 56px); }
-        .nav { position: static; background: var(--bg); border-bottom: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
-        .nav .wrap { height: auto; padding-top: 24px; align-items: baseline; }
-        .brand { color: var(--ink); font-weight: 700; font-size: 18px; } .brand span { color: var(--ink); }
-        .nav a.back { color: var(--muted); } .nav a.back:hover { color: var(--ink); text-decoration: underline; }
-        .head { padding: 44px 0 30px; }
-        .head h1 { font: 400 clamp(32px, 5vw, 44px)/1.12 var(--serif); letter-spacing: -.015em; }
-        .load input { background: var(--bg); border: 1.5px solid var(--ink); border-radius: 4px; }
-        .load input:focus { border-color: var(--ink); box-shadow: none; outline: 3px solid color-mix(in srgb, var(--mint) 35%, transparent); }
-        .btn { background: var(--ink); color: var(--bg); border: 1.5px solid var(--ink); border-radius: 4px; }
-        .btn:hover { filter: none; background: var(--bg); color: var(--ink); }
+        body { font-size: 16px; }
+        .nav { background: color-mix(in srgb, var(--bg) 88%, transparent); border-bottom: 1px solid var(--line); }
+        .brand { color: var(--ink); font: 700 17px var(--sans); letter-spacing: -.03em; } .brand span { color: var(--ink); }
+        .nav a.back { color: var(--muted); } .nav a.back:hover { color: var(--ink); }
+        .head { padding: 56px 0 36px; border-bottom: 1px solid var(--line); }
+        .head h1 { font-size: clamp(32px, 4.4vw, 46px); line-height: 1.04; letter-spacing: -.04em; font-weight: 700; }
+        .load input { background: var(--bg); border: 1px solid var(--line); border-radius: 9px; color: var(--ink); }
+        .load input:focus { border-color: var(--mint); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint) 22%, transparent); }
+        .btn { background: var(--ink); color: var(--bg); border-radius: 9px; } .btn:hover { filter: none; opacity: .84; }
         #load-status.bad { color: var(--bad); }
-        main { padding-top: 8px; }
-        .panel { border: 0; border-top: 2px solid var(--ink); border-radius: 0; }
-        .panel > h2 { font: 400 24px/1.2 var(--serif); letter-spacing: -.01em; text-transform: none; color: var(--ink); padding: 18px 0 0; }
-        .sec { padding-left: 0; padding-right: 0; }
-        .out-head { padding-left: 0; padding-right: 0; } .out-head h3 { font: 400 24px/1.2 var(--serif); }
-        #steps { padding-left: 0; padding-right: 0; }
-        input.f, select.f { border-radius: 4px; border-color: var(--muted); background: var(--bg); }
-        input.f:focus, select.f:focus { border-color: var(--ink); box-shadow: none; outline: 3px solid color-mix(in srgb, var(--mint) 35%, transparent); }
-        .step { border-radius: 4px; background: var(--surface-2); }
+        .panel { box-shadow: none; }
+        .panel > h2 { font: 650 13px var(--sans); letter-spacing: 0; text-transform: none; color: var(--muted); }
+        input.f, select.f { background: var(--bg); border-radius: 9px; }
+        input.f:focus, select.f:focus { border-color: var(--mint); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint) 22%, transparent); }
+        .step { background: var(--surface-2); border-radius: 10px; }
         .n { background: var(--ink); color: var(--bg); }
-        .tag { border-radius: 3px; }
-        .copy { background: none; border: 0; color: var(--mint); text-decoration: underline; text-underline-offset: 3px; font: 13px var(--sans); padding: 0; }
-        .copy.done { color: var(--accent); text-decoration: none; }
-        .ghost { border-radius: 4px; } .x { border-radius: 4px; }
-        .provbox, .done-box, .confirm-box, .warnbox { border-radius: 4px; }
-        .after .btn2, .confirm-box .btn2 { border-radius: 4px; }
-        .cols { gap: 48px; }
+        .copy { background: var(--bg); }
+        .after .btn2, .confirm-box .btn2 { background: var(--ink); color: var(--bg); }
 
         @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } .out { position: static; } }
         @media (max-width: 560px) {

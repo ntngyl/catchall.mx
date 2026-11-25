@@ -31,7 +31,7 @@ def add_shared_stylesheet(response):
             html = response.get_data(as_text=True)
             if '</head>' in html and '/app.css' not in html:
                 response.set_data(html.replace(
-                    '</head>', '<link rel="stylesheet" href="/app.css?v=3"></head>', 1))
+                    '</head>', '<link rel="stylesheet" href="/app.css?v=4"></head>', 1))
     except Exception:
         pass
     return response
