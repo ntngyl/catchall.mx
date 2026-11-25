@@ -2,3 +2,7 @@ dkim_keys/
 __pycache__/
 *.bak-*
 *.pyc
+*.log
+*.env
+*.pem
+*.key

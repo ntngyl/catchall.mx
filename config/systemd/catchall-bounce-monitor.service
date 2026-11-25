@@ -1,0 +1,10 @@
+[Unit]
+Description=CatchAll.mx Bounce Monitor
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/catchall/bounce_monitor.py
+User=root
+StandardOutput=journal
+StandardError=journal

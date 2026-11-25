@@ -1,0 +1,24 @@
+# Zero-data-retention policy: mail logs are kept 7 days at most.
+/var/log/catchall/*.log {
+	daily
+	rotate 7
+	maxage 7
+	missingok
+	notifempty
+	compress
+	delaycompress
+	copytruncate
+}
+# Zero-data-retention policy: Postfix log kept 7 days at most.
+/var/log/mail.log {
+	daily
+	rotate 7
+	maxage 7
+	missingok
+	notifempty
+	compress
+	delaycompress
+	postrotate
+		/usr/lib/rsyslog/rsyslog-rotate
+	endscript
+}

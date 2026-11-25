@@ -1,0 +1,2 @@
+# Every hour: delete queued emails older than 24 hours and retry any left for confirmed destinations
+7 * * * * root /usr/bin/python3 /opt/catchall/queue_manager.py >> /var/log/catchall/cleanup.log 2>&1

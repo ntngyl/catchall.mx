@@ -1,0 +1,24 @@
+# The master.cf entries that differ from the Postfix defaults.
+smtp      inet  n       -       y       -       1       postscreen
+smtpd     pass  -       -       y       -       -       smtpd
+dnsblog   unix  -       -       y       -       0       dnsblog
+tlsproxy  unix  -       -       y       -       0       tlsproxy
+catchall-pipe unix - n n - - pipe
+  flags=DRhu user=nobody argv=/opt/catchall/forward_email.py ${recipient}
+127.0.0.1:10025 inet n -       n       -       -       smtpd
+  -o content_filter=
+  -o virtual_transport=smtp
+  -o mynetworks=127.0.0.0/8
+  -o smtpd_client_restrictions=permit_mynetworks,reject
+  -o smtpd_helo_restrictions=
+  -o smtpd_sender_restrictions=
+  -o smtpd_recipient_restrictions=permit_mynetworks,reject
+  -o receive_override_options=no_unknown_recipient_checks,no_milters
+127.0.0.1:10026 inet n -       n       -       -       smtpd
+  -o content_filter=smtp:
+  -o mynetworks=127.0.0.0/8
+  -o smtpd_client_restrictions=permit_mynetworks,reject
+  -o smtpd_helo_restrictions=
+  -o smtpd_sender_restrictions=
+  -o smtpd_recipient_restrictions=permit_mynetworks,reject
+  -o receive_override_options=no_unknown_recipient_checks

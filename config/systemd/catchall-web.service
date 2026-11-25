@@ -1,0 +1,15 @@
+[Unit]
+Description=Catchall Web API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/catchall
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/usr/bin/python3 /opt/catchall/web_api.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
