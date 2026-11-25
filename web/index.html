@@ -272,7 +272,7 @@
                         <tbody>
                             <tr><td><code>catchall-limit=200</code></td><td>50</td><td>Emails forwarded per day.</td></tr>
                             <tr><td><code>catchall-spam=strict</code></td><td>moderate</td><td>Spam filter: strict, moderate or off.</td></tr>
-                            <tr><td><code>catchall-size=2</code></td><td>5</td><td>Lower the largest message we accept, in MB. 5 is the most.</td></tr>
+                            <tr><td><code>catchall-size=5</code></td><td>20</td><td>Lower the largest message we accept, in MB. 20 is the most.</td></tr>
                         </tbody>
                     </table>
                     <p>Writing these by hand gets fiddly. The <a href="/setup/">record builder</a> asks what you want, looks at what your domain has now, and lists what to add, change or delete in your DNS provider's own wording. It also sets up DKIM, so forwarded mail is signed by your domain.</p>

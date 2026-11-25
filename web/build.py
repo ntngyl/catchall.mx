@@ -444,7 +444,7 @@ OURS = {
     'Domains': 'No limit',
     'Addresses': 'Every address at the domain (catch-all), plus up to 25 single-address routes',
     'Volume': '50 emails a day per domain by default; change it with a DNS record. While the service is small there is also a shared hourly cap per mailbox provider.',
-    'Message size': '5 MB',
+    'Message size': '20 MB',
     'Send as your domain': 'No. Forwarding only.',
     'Setup': '1 MX record and 1 TXT record',
     'DNS provider': 'Any',
@@ -477,7 +477,7 @@ RIVALS = [
              'Support': 'Email and chat support; 99% uptime guarantee on the free plan',
          },
          them=['You want to send mail as your domain, not only receive it.',
-               'You need large attachments, more than 50 emails a day without touching DNS, or a delivery log to look at.',
+               'You need attachments over 20 MB, more than 50 emails a day without touching DNS, or a delivery log to look at.',
                'You want an API, webhooks, or support you can write to.',
                'You would rather not have your destination address visible in DNS.'],
          us=['You have several domains and do not want to pay to forward more than one.',
@@ -510,7 +510,7 @@ RIVALS = [
          them=['You want to send as your domain or have real mailboxes later, without changing provider.',
                'You need regular expressions, several recipients for one address, or webhooks.',
                'You want your forwarding addresses hidden from public DNS (their paid plans do this; neither free option does).',
-               'You receive large attachments.'],
+               'You receive attachments larger than 20 MB.'],
          us=['You want forwarding only, with nothing to sign up for and no plan to outgrow.',
              'You want the mailbox owner to confirm before any mail is sent to them.',
              'You prefer plain rules (<code>catchall-route</code>, <code>catchall-block</code>, <code>catchall-only</code>) over regular expressions.',
@@ -519,7 +519,7 @@ RIVALS = [
          sources=[('Pricing', 'https://forwardemail.net/en/pricing'), ('FAQ', 'https://forwardemail.net/en/faq'),
                   ('Privacy policy', 'https://forwardemail.net/en/privacy'), ('Source code', 'https://github.com/forwardemail/forwardemail.net')]),
     dict(slug='cloudflare-email-routing', name='Cloudflare Email Routing', short='Cloudflare',
-         verdict='If your domain already uses Cloudflare for DNS, Cloudflare Email Routing is free, has no stated inbound limit and takes larger messages. It only works for domains on Cloudflare DNS, and it is managed from a Cloudflare account. CatchAll.mx works with any DNS provider and needs no account.',
+         verdict='If your domain already uses Cloudflare for DNS, Cloudflare Email Routing is free, has no stated inbound limit and takes slightly larger messages. It only works for domains on Cloudflare DNS, and it is managed from a Cloudflare account. CatchAll.mx works with any DNS provider and needs no account.',
          theirs={
              'Price': 'Free for inbound routing. Sending to arbitrary recipients needs the Workers Paid plan.',
              'Account': 'A Cloudflare account',
@@ -538,7 +538,7 @@ RIVALS = [
              'Support': 'Run on Cloudflare\'s network',
          },
          them=['Your domain is already on Cloudflare DNS and you are happy to manage mail there.',
-               'You need messages larger than 5 MB or more than a few dozen emails a day.',
+               'You need more than a few dozen emails a day.',
                'You want to process mail in code with Email Workers.',
                'You want the backing of a large network over a small independent service.'],
          us=['Your DNS is somewhere else and you do not want to move nameservers just to forward mail.',
@@ -659,7 +659,7 @@ Every setting is a TXT record on the domain itself.
 | `catchall-only=hello,billing` | Accept only the listed addresses and refuse all others. |
 | `catchall-limit=200` | Emails forwarded per day for the domain. Default 50. |
 | `catchall-spam=strict` | Spam filtering level: `strict`, `moderate` (default) or `off`. |
-| `catchall-size=2` | Lower the largest accepted message, in MB. Default and maximum 5. |
+| `catchall-size=5` | Lower the largest accepted message, in MB. Default and maximum 20. |
 
 Order of evaluation for an incoming address: block list, then allow list, then single-address routes, then the default destination. A `+tag` in the address is ignored when matching.
 
@@ -684,7 +684,7 @@ A message arrives, the domain's DNS is read to find the destination, the message
 
 Suits: people with one or several custom domains who want mail to any address delivered to an inbox they already use; developers and side projects; anyone who wants a separate address per shop or newsletter to trace leaks.
 
-Does not suit: anyone who needs to send as the domain, needs attachments over 5 MB, needs high daily volume, wants a delivery dashboard or guaranteed uptime, or does not want the destination address visible in public DNS.
+Does not suit: anyone who needs to send as the domain, needs messages over 20 MB, needs high daily volume, wants a delivery dashboard or guaranteed uptime, or does not want the destination address visible in public DNS.
 
 ## Alternatives
 {rivals}

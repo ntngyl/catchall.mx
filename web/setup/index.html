@@ -228,7 +228,7 @@
                     <div class="three">
                         <div><label class="lbl" for="limit">Emails per day</label><input class="f" id="limit" type="number" min="1" max="5000" placeholder="50"></div>
                         <div><label class="lbl" for="spam">Spam filter</label><select class="f" id="spam"><option value="moderate">Moderate</option><option value="strict">Strict</option><option value="off">Off</option></select></div>
-                        <div><label class="lbl" for="size">Max size (MB)</label><input class="f" id="size" type="number" min="1" max="25" placeholder="5"></div>
+                        <div><label class="lbl" for="size">Max size (MB)</label><input class="f" id="size" type="number" min="1" max="20" placeholder="20"></div>
                     </div>
                 </div>
             </div>
@@ -254,7 +254,7 @@
         const MX = 'mail.catchall.mx';
         const EMAIL = /^[^@\s"<>,;:]+@([a-z0-9-]+\.)+[a-z0-9-]{2,63}$/i;
         const NAME = /^[a-z0-9._*+-]{1,64}$/;
-        const DEFAULTS = {limit: '50', spam: 'moderate', size: '5'};
+        const DEFAULTS = {limit: '50', spam: 'moderate', size: '20'};
 
         // How each DNS provider wants records entered. "generic" is the default.
         const dot = (h) => h + '.';

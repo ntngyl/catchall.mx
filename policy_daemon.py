@@ -20,6 +20,7 @@ POLICY_PORT = 10032
 
 # Global limits
 DEST_DAILY_LIMIT = 200       # Total emails/day to gmail.com, outlook.com, etc.
+MAX_SIZE_MB = 20            # Largest message accepted; matches Postfix message_size_limit
 DEST_HOURLY_LIMIT = 50      # Hourly burst limit per destination domain
 DISPOSABLE_DOMAINS = {'vr67rtyve56r4yerytv.shop'}
 
@@ -38,7 +39,7 @@ def get_dns_config(domain):
         'forward': None,
         'limit': 50,
         'spam': 'moderate',
-        'size': 5,
+        'size': MAX_SIZE_MB,
     }
     
     try:
@@ -55,7 +56,7 @@ def get_dns_config(domain):
                     pass
             elif txt.startswith('catchall-size='):
                 try:
-                    config['size'] = int(txt.split('=', 1)[1])
+                    config['size'] = max(1, min(MAX_SIZE_MB, int(txt.split('=', 1)[1])))
                 except:
                     pass
     
