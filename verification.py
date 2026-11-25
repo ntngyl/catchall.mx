@@ -54,7 +54,7 @@ def trigger_verification(domain, recipient_email, key=None):
 
     # Send verification email FIRST. Only persist the 7-day pending key if the
     # send actually succeeded; otherwise a transient/credential SMTP failure
-    # would leave the key in place and block every retry for 7 days (the key
+    # would leave the key in place and block every retry for a day (the key
     # existence check in forward_email.py and above returns early).
     sent = send_verification_email(domain, recipient_email, token, queue_count, key)
     if not sent:
@@ -68,7 +68,7 @@ def trigger_verification(domain, recipient_email, key=None):
     verify_data = f"pending:{token}:{recipient_email}"
     r.setex(
         f"verify:{key}",
-        7 * 86400,  # 7 days
+        24 * 3600,  # 24 hours, the same as the queue lifetime
         verify_data
     )
 
@@ -106,7 +106,7 @@ BLOCK: {block_url}
 
 If you don't recognize {domain}, please click BLOCK.
 
-This link expires in 7 days.
+This link expires in 24 hours. Emails waiting for it are deleted after that.
 
 — CatchAll.mx
 """
@@ -161,7 +161,7 @@ This link expires in 7 days.
             If you don't recognize <strong>{domain}</strong>, please click <strong>Block</strong>.
         </p>
 
-        <p style="color: #666; font-size: 12px; margin-top: 20px;">This link expires in 7 days.</p>
+        <p style="color: #666; font-size: 12px; margin-top: 20px;">This link expires in 24 hours. Emails waiting for it are deleted after that.</p>
         <hr style="margin-top: 30px; border: none; border-top: 1px solid #ddd;">
         <p style="color: #999; font-size: 11px; text-align: center;">
             CatchAll.mx - Spam-free email forwarding

@@ -32,15 +32,6 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PL1PWVY9KG"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-PL1PWVY9KG');
-    </script>
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314161a'/%3E%3Cpath d='M7 11l9 7 9-7' fill='none' stroke='%234fd1a1' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7 21h18' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 
@@ -364,7 +355,7 @@
                         <li><b>Your domain's status:</b> that it is confirmed, with each confirmed destination stored as a fingerprint.</li>
                         <li><b>Daily counters</b> per domain, to enforce limits.</li>
                         <li><b>Delivery logs for 7 days:</b> domain, destination and time, for troubleshooting. Then they are deleted.</li>
-                        <li><b>Mail on hold:</b> messages waiting for a destination to confirm, or held as suspected forgeries, for 7 days at most. Then they are deleted.</li>
+                        <li><b>Mail on hold:</b> messages waiting for a destination to confirm are kept 24 hours at most. Messages held as suspected forgeries are kept 7 days at most. Then they are deleted.</li>
                     </ul>
                 </div>
                 <div class="card">

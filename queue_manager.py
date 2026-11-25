@@ -11,6 +11,8 @@ import redis
 
 QUEUE_DIR = '/var/spool/catchall/queue'
 MAX_QUEUE_SIZE = 100
+# Unconfirmed mail is held for 24 hours at most, then deleted (zero retention)
+QUEUE_TTL = 24 * 3600
 
 logging.basicConfig(
     filename='/var/log/catchall/queue.log',
@@ -59,7 +61,7 @@ def queue_email(domain, email_data):
 
     # Track in Redis
     r.rpush(queue_key, email_id)
-    r.expire(queue_key, 7 * 86400)  # 7 days
+    r.expire(queue_key, QUEUE_TTL)
 
     logging.info(f"Queued email for {domain}: {email_id} (added to Redis)")
     return email_id
@@ -126,7 +128,7 @@ def flush_queue(domain, forward_to):
     r.delete(queue_key)
     if failed_ids:
         r.rpush(queue_key, *failed_ids)
-        r.expire(queue_key, 7 * 86400)
+        r.expire(queue_key, QUEUE_TTL)
 
     # Cleanup directory (only succeeds once it is empty)
     try:
@@ -173,8 +175,8 @@ def cleanup_expired_queues():
         for email_file in os.listdir(domain_dir):
             email_path = os.path.join(domain_dir, email_file)
 
-            # Delete files older than 7 days
-            if os.path.getmtime(email_path) < (time.time() - 7 * 86400):
+            # Delete files older than the queue lifetime
+            if os.path.getmtime(email_path) < (time.time() - QUEUE_TTL):
                 try:
                     os.remove(email_path)
                     logging.info(f"Cleaned up expired: {email_path}")
