@@ -105,6 +105,13 @@
         .after .btn2 { margin-top: 12px; background: var(--ink); color: var(--bg); border: 0; border-radius: 9px; padding: 10px 16px; font: 600 14px var(--sans); cursor: pointer; }
         .empty { padding: 26px 0 8px; color: var(--muted); font-size: 15px; }
         .warnbox { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; }
+        .prov { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+        .prov label { font-size: 13px; font-weight: 600; white-space: nowrap; }
+        .prov select { font-family: var(--sans); padding: 8px 10px; }
+        .provbox { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); font-size: 14.5px; }
+        .provbox b { display: block; margin-bottom: 4px; }
+        .provbox .path { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+        .provbox ul { margin: 8px 0 0 18px; color: var(--muted); } .provbox li { margin-bottom: 4px; }
         details.kept { margin-top: 14px; font-size: 14px; color: var(--muted); }
         details.kept summary { cursor: pointer; font-weight: 600; }
         details.kept code { display: block; margin-top: 6px; overflow-wrap: anywhere; }
@@ -172,6 +179,11 @@
                     </div>
                 </div>
                 <div class="sec">
+                    <h3>Sign mail as your domain (DKIM)</h3>
+                    <label class="check"><input type="checkbox" id="dkim-on"> <span>Sign forwarded mail with my domain's own key. Rewritten messages then arrive from your domain instead of catchall.mx.</span></label>
+                    <p class="help" id="dkim-note" style="margin-top:8px"></p>
+                </div>
+                <div class="sec">
                     <h3>Limits and spam filtering</h3>
                     <p class="help">Leave the defaults unless you need something else.</p>
                     <div class="three">
@@ -186,6 +198,10 @@
                 <div class="out-head">
                     <h3 id="out-title">Your instructions</h3>
                     <p id="out-sub">Fill in where mail should go and the steps appear here.</p>
+                    <div class="prov">
+                        <label for="provider">DNS provider</label>
+                        <select class="f" id="provider"></select>
+                    </div>
                 </div>
                 <div id="steps"></div>
             </div>
@@ -201,6 +217,70 @@
         const NAME = /^[a-z0-9._*+-]{1,64}$/;
         const DEFAULTS = {limit: '50', spam: 'moderate', size: '5'};
 
+        // How each DNS provider wants records entered. "generic" is the default.
+        const dot = (h) => h + '.';
+        const quoted = (v) => (v.match(/.{1,255}/g) || ['']).map((c) => '"' + c + '"').join(' ');
+        const PROVIDERS = {
+            generic: {name: 'Other / not sure', apex: '@'},
+            cloudflare: {name: 'Cloudflare', ns: /\.ns\.cloudflare\.com$/, apex: '@',
+                path: 'Cloudflare dashboard → your domain → DNS → Records → Add record',
+                notes: ['For the MX record, the value goes in "Mail server" and 10 in "Priority".',
+                        'Leave TTL on Auto. MX and TXT records have no proxy switch to worry about.']},
+            godaddy: {name: 'GoDaddy', ns: /domaincontrol\.com$/, apex: '@',
+                path: 'GoDaddy → My Products → Domains → your domain → DNS → Add New Record',
+                notes: ['Use @ in the Name field for the domain itself.']},
+            namecheap: {name: 'Namecheap', ns: /registrar-servers\.com$/, apex: '@',
+                path: 'Namecheap → Domain List → Manage → Advanced DNS',
+                notes: ['MX records are in the "Mail Settings" part of that page: choose "Custom MX" first, then add the record.',
+                        'TXT records go under "Host Records".']},
+            squarespace: {name: 'Squarespace Domains (was Google Domains)', ns: /(googledomains\.com|squarespacedns\.com)$/, apex: '@',
+                path: 'Squarespace → Domains → your domain → DNS → Custom records'},
+            porkbun: {name: 'Porkbun', ns: /porkbun\.com$/, apex: '(leave empty)',
+                path: 'Porkbun → Domain Management → your domain → DNS',
+                notes: ['Leave the Host field empty for the domain itself.']},
+            ionos: {name: 'IONOS', ns: /ui-dns\.(com|org|de|biz)$/, apex: '@',
+                path: 'IONOS → Domains & SSL → your domain → DNS → Add record'},
+            hostinger: {name: 'Hostinger', ns: /dns-parking\.com$/, apex: '@',
+                path: 'Hostinger hPanel → Domains → your domain → DNS / Nameservers'},
+            route53: {name: 'Amazon Route 53', ns: /awsdns-/, apex: '(leave empty)',
+                path: 'AWS console → Route 53 → Hosted zones → your domain → Create record',
+                mx: (h, prio) => ({value: prio + ' ' + h, extra: ''}), txt: quoted,
+                notes: ['Route 53 keeps every value for one name and type in a single record. Put all the TXT values below on separate lines of one TXT record, instead of creating several.',
+                        'TXT values need double quotes, and the MX value includes the priority. Both are already written that way below.']},
+            digitalocean: {name: 'DigitalOcean', ns: /digitalocean\.com$/, apex: '@',
+                path: 'DigitalOcean → Networking → Domains → your domain',
+                mx: (h, prio) => ({value: dot(h), extra: 'priority ' + prio})},
+            gandi: {name: 'Gandi', ns: /gandi\.net$/, apex: '@',
+                path: 'Gandi → Domain → your domain → DNS Records → Add record',
+                mx: (h, prio) => ({value: dot(h), extra: 'priority ' + prio}),
+                notes: ['The MX value ends with a dot. Without it, Gandi adds your own domain to the end.']},
+            ovh: {name: 'OVHcloud', ns: /(ovh\.(net|ca)|anycast\.me)$/, apex: '(leave empty)',
+                path: 'OVHcloud Manager → Web Cloud → Domain names → your domain → DNS zone → Add an entry',
+                mx: (h, prio) => ({value: dot(h), extra: 'priority ' + prio}),
+                notes: ['Leave "Sub-domain" empty for the domain itself.',
+                        'The MX target ends with a dot. Without it, OVH adds your own domain to the end.']},
+            namecom: {name: 'Name.com', ns: /(^|\.)name\.com$/, apex: '(leave empty)',
+                path: 'Name.com → My Domains → your domain → Manage DNS',
+                notes: ['Leave the Host field empty for the domain itself.']},
+        };
+        let detected = 'generic';
+        const prov = () => PROVIDERS[$('provider').value] || PROVIDERS.generic;
+        function fillProviders() {
+            const sel = $('provider'), keep = sel.value;
+            sel.innerHTML = Object.keys(PROVIDERS).sort((a, b) => a === 'generic' ? 1 : b === 'generic' ? -1 : PROVIDERS[a].name.localeCompare(PROVIDERS[b].name))
+                .map((k) => `<option value="${k}">${esc(PROVIDERS[k].name)}${k === detected && k !== 'generic' ? ' (detected)' : ''}</option>`).join('');
+            sel.value = keep && PROVIDERS[keep] ? keep : detected;
+        }
+        function detectProvider(nameservers) {
+            detected = 'generic';
+            Object.keys(PROVIDERS).forEach((k) => {
+                if (PROVIDERS[k].ns && (nameservers || []).some((n) => PROVIDERS[k].ns.test(n))) detected = k;
+            });
+            $('provider').value = '';
+            fillProviders();
+        }
+
+        let dkim = null;          // {host, value, published, matches, problem} from /api/dkim, null until loaded
         let domain = '';          // loaded domain, '' until loaded
         let current = null;       // {mx: [...], txt: [...]} from the API, null until loaded
 
@@ -262,7 +342,7 @@
             else if (onlyOn && !only.length && !routes.length) errs.only = 'List at least one address, or every message would be refused.';
 
             const num = (id, def) => { const v = $(id).value.trim(); return /^\d+$/.test(v) ? String(parseInt(v, 10)) : def; };
-            return {forward, routes, block, only, onlyOn, errs,
+            return {forward, routes, block, only, onlyOn, errs, dkimOn: $('dkim-on').checked,
                     limit: num('limit', DEFAULTS.limit), spam: $('spam').value, size: num('size', DEFAULTS.size)};
         }
 
@@ -315,17 +395,38 @@
                 else steps.add.push({type: 'TXT', value: w});
             });
             left.forEach((c) => steps.del.push({type: 'TXT', value: c, why: 'No longer needed with the choices above.'}));
+
+            // DKIM record lives on its own name: catchall._domainkey
+            if (dkim) {
+                const pub = dkim.published || [];
+                if (f.dkimOn && dkim.value) {
+                    if (dkim.matches) steps.keep.push('TXT  ' + dkim.host + '  (DKIM key, signing is active)');
+                    else if (pub.length) steps.chg.push({type: 'TXT', host: dkim.host, old: pub[0], value: dkim.value,
+                        why: dkim.problem || 'The published DKIM key is not the one we sign with.'});
+                    else steps.add.push({type: 'TXT', host: dkim.host, value: dkim.value, why: 'Your DKIM key. Paste it as one value; your provider splits it if needed.'});
+                } else if (!f.dkimOn) {
+                    pub.forEach((v) => steps.del.push({type: 'TXT', host: dkim.host, value: v, why: 'DKIM signing as your domain is switched off.'}));
+                }
+            }
             return steps;
         }
 
         // ---- output
-        function fieldRows(s) {
-            const host = `<div class="k">Host</div><div class="v">@</div><div></div>`;
-            const type = `<div class="k">Type</div><div class="v">${esc(s.type)}${s.extra ? ' · ' + esc(s.extra) : ''}</div><div></div>`;
+        function fieldRows(s, isDelete) {
+            const P = prov();
+            let value = s.value, extra = s.extra || '';
+            if (!isDelete) {       // records to create are written the way the provider expects
+                if (s.type === 'MX' && P.mx) { const m = P.mx(s.value, 10); value = m.value; extra = m.extra; }
+                if (s.type === 'TXT' && P.txt) value = P.txt(s.value);
+            }
+            const hostText = s.host ? s.host : P.apex;
+            const host = `<div class="k">Host</div><div class="v">${esc(hostText)}</div>` +
+                `<div>${s.host ? `<button class="copy" data-copy="${esc(s.host)}">Copy</button>` : ''}</div>`;
+            const type = `<div class="k">Type</div><div class="v">${esc(s.type)}${extra ? ' · ' + esc(extra) : ''}</div><div></div>`;
             const val = (label, v, cls, copy) => `<div class="k">${label}</div><div class="v ${cls || ''}">${esc(v)}</div>` +
                 `<div>${copy ? `<button class="copy" data-copy="${esc(v)}">Copy</button>` : ''}</div>`;
-            if (s.old !== undefined) return type + host + val('Now', s.old, 'old') + val('New', s.value, '', true);
-            return type + host + val('Value', s.value, '', true);
+            if (s.old !== undefined) return type + host + val('Now', s.old, 'old') + val('New', value, '', true);
+            return type + host + val('Value', value, '', !isDelete);
         }
 
         function render() {
@@ -336,6 +437,13 @@
             $('forward').classList.toggle('invalid', !!f.errs.forward);
             $('only-box').style.display = f.onlyOn ? 'block' : 'none';
             document.querySelectorAll('#routes .at').forEach((a) => a.textContent = '@' + (domain || 'yourdomain.com') + ' →');
+
+            const note = $('dkim-note');
+            if (!f.dkimOn) note.textContent = dkim && (dkim.published || []).length ? 'A DKIM record is published for this domain. Leaving this off lists it for removal.' : '';
+            else if (!domain) note.textContent = 'Load your domain above first: the key is created for that domain.';
+            else if (!dkim || !dkim.value) note.textContent = 'Preparing your key…';
+            else if (dkim.matches) note.textContent = 'Your key is published and signing is active.';
+            else note.textContent = 'Your key is ready. The record to publish is in the steps.';
 
             const box = $('steps');
             const hasErr = Object.values(f.errs).some(Boolean);
@@ -357,12 +465,18 @@
                 items.forEach((s) => {
                     n += 1;
                     html += `<div class="step"><div class="step-top"><span class="n">${n}</span><span class="tag ${cls}">${tag}</span>` +
-                            `<span>${label(s)}</span></div><div class="fields">${fieldRows(s)}</div></div>`;
+                            `<span>${label(s)}</span></div><div class="fields">${fieldRows(s, cls === 'del')}</div></div>`;
                 });
             };
             group('del', 'Remove', p.del, 'Delete', (s) => esc(s.why || 'Delete this record.'));
-            group('chg', 'Change', p.chg, 'Edit', () => 'Edit this record, or delete it and add the new value.');
-            group('add', 'Add', p.add, 'Add', (s) => s.type === 'MX' ? 'Tells senders to deliver your mail to us.' : 'Create a new TXT record.');
+            group('chg', 'Change', p.chg, 'Edit', (s) => esc(s.why || 'Edit this record, or delete it and add the new value.'));
+            group('add', 'Add', p.add, 'Add', (s) => s.type === 'MX' ? 'Tells senders to deliver your mail to us.' : esc(s.why || 'Create a new TXT record.'));
+
+            const P = prov();
+            if (P.path && total) {
+                html = `<div class="provbox"><b>Where to make these changes at ${esc(P.name)}</b><span class="path">${esc(P.path)}</span>` +
+                       (P.notes ? `<ul>${P.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + `</div>` + html;
+            }
 
             if (!current) {
                 html = `<div class="warnbox">These are the records for a domain with nothing set up yet. Load your domain above to get steps that take your existing records into account.</div>` + html;
@@ -377,8 +491,8 @@
 
             const newTargets = [f.forward].concat(f.routes.map((r) => r[1]));
             html += `<div class="after"><b>Good to know</b><ol>
-                <li>Make these changes at your DNS provider, on the domain itself. Host <span class="mono">@</span> means the domain; some providers want the field left empty or the domain name typed in.</li>
-                <li>Paste values exactly, with no quotes around them. Leave TTL on automatic.</li>
+                ${P.path ? '' : '<li>Make these changes at your DNS provider, on the domain itself. Host <span class="mono">@</span> means the domain; some providers want the field left empty or the domain name typed in. Pick your provider above for exact wording.</li>'}
+                <li>${P.txt ? 'Paste values exactly as shown, including the quotes.' : 'Paste values exactly, with no quotes around them.'} Leave TTL on automatic.</li>
                 <li>${total ? 'When you are done, check again to confirm everything is in place.' : 'Changes can take a few minutes to be visible.'}</li>
                 <li>Each mailbox that receives mail (${esc(newTargets.filter((v, i, a) => a.indexOf(v) === i).join(', '))}) gets a confirmation link the first time. Check the spam folder.</li></ol>
                 ${domain ? `<button class="btn2" id="recheck">Check ${esc(domain)} again</button>` : ''}</div>`;
@@ -409,11 +523,16 @@
                 const data = await (await fetch('/api/check-dns?domain=' + encodeURIComponent(d))).json();
                 const fatal = (data.issues || []).find((i) => /does not exist|did not answer|does not look like|your own domain|not catchall/i.test(i.text));
                 if (data.error || !data.current || fatal) {
-                    current = null; domain = '';
+                    current = null; domain = ''; dkim = null;
                     status.className = 'bad';
                     status.textContent = data.error || (fatal ? fatal.text : data.message) || 'Could not read that domain.';
                 } else {
                     domain = data.domain; current = data.current; $('domain').value = domain;
+                    detectProvider(current.nameservers);
+                    dkim = null;
+                    await loadDkim(false);
+                    if (fillForm) $('dkim-on').checked = !!(dkim && (dkim.published || []).length);
+                    else if ($('dkim-on').checked) await loadDkim(true);
                     const c = current.config || {};
                     const found = current.txt.length + (current.mx.some((m) => m.host === MX) ? 1 : 0);
                     status.innerHTML = found
@@ -437,9 +556,24 @@
             }
         }
 
+        // DKIM: read what is published; generate=true also creates the key if there is none yet
+        async function loadDkim(generate) {
+            if (!domain) return;
+            try {
+                const d = await (await fetch('/api/dkim?domain=' + encodeURIComponent(domain) + (generate ? '&generate=1' : ''))).json();
+                if (!d.error) dkim = d;
+            } catch (e) {}
+        }
+        $('dkim-on').addEventListener('change', async () => {
+            render();
+            if ($('dkim-on').checked && domain && !(dkim && dkim.value)) { await loadDkim(true); render(); }
+        });
+        $('provider').addEventListener('change', render);
+        fillProviders();
+
         $('load-btn').onclick = () => load(true);
         $('domain').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(true); });
-        $('domain').addEventListener('input', () => { if (domain && cleanDomain($('domain').value) !== domain) { domain = ''; current = null; render(); } });
+        $('domain').addEventListener('input', () => { if (domain && cleanDomain($('domain').value) !== domain) { domain = ''; current = null; dkim = null; render(); } });
         $('add-route').onclick = () => { addRoute('', ''); };
         ['forward', 'block', 'only', 'limit', 'size'].forEach((id) => $(id).addEventListener('input', render));
         ['only-on', 'spam'].forEach((id) => $(id).addEventListener('change', render));

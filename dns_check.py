@@ -304,6 +304,20 @@ def check_domain(raw_domain, is_dkim_enabled=None, is_abuse_blocked=None):
             }
         except dns.exception.DNSException:
             pass
+    # Name servers tell the builder which DNS provider's instructions to show.
+    # A subdomain usually has no NS of its own, so walk up to the parent.
+    current['nameservers'] = []
+    if exists:
+        name = domain
+        for _ in range(4):
+            try:
+                current['nameservers'] = sorted(str(n.target).rstrip('.').lower()
+                                                for n in res.resolve(name, 'NS'))
+                break
+            except dns.exception.DNSException:
+                if name.count('.') < 2:
+                    break
+                name = name.split('.', 1)[1]
     result['current'] = current
 
     if is_dkim_enabled:

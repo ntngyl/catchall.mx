@@ -50,6 +50,51 @@ def check_dns():
     return jsonify(check_domain(raw, is_dkim_enabled=is_dkim_enabled,
                                 is_abuse_blocked=is_abuse_blocked))
 
+@app.route('/api/dkim')
+def api_dkim():
+    """DKIM record for a domain, for the record builder.
+
+    Returns the TXT record the domain should publish and what it publishes
+    now. generate=1 creates the key if the domain has none yet. When the
+    published record matches, signing is switched on.
+    """
+    from dns_check import clean_domain, DOMAIN_RE
+    from dkim_manager import DKIM_SELECTOR
+
+    domain = clean_domain(request.args.get('domain', ''))
+    if not domain or len(domain) > 253 or not DOMAIN_RE.fullmatch(domain):
+        return jsonify({'error': 'That does not look like a domain name.'}), 400
+
+    host = f"{DKIM_SELECTOR}._domainkey"
+    published = []
+    try:
+        res = dns.resolver.Resolver()
+        res.lifetime = 6
+        for rdata in res.resolve(f"{host}.{domain}", 'TXT'):
+            published.append(b''.join(rdata.strings).decode('utf-8', 'replace'))
+    except Exception:
+        pass
+
+    ok, info = get_dns_record(domain)
+    if not ok and request.args.get('generate') == '1':
+        ok, info = generate_dkim_key(domain)
+
+    matches, problem = False, None
+    if ok and published:
+        matches, message = verify_dkim_dns(domain)
+        if not matches:
+            problem = message
+
+    return jsonify({
+        'domain': domain,
+        'host': host,
+        'value': info['value'] if ok else None,
+        'published': published,
+        'matches': bool(matches),
+        'enabled': bool(is_dkim_enabled(domain)),
+        'problem': problem,
+    })
+
 @app.route('/dkim/setup')
 def dkim_setup():
     """Generate DKIM key and show DNS record to add"""
