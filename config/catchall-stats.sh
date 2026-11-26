@@ -7,6 +7,7 @@ COMMON=(--log-format=COMBINED --no-progress --no-query-string --exclude-ip=209.1
         --ignore-panel=KEYPHRASES --ignore-panel=REMOTE_USER --ignore-panel=CACHE_STATUS)
 [ -f "$GEO" ] && COMMON+=(--geoip-database="$GEO")
 logs() { zcat -f /var/log/nginx/access.log* ; }
-logs | goaccess - "${COMMON[@]}" --ignore-crawlers --html-report-title="catchall.mx visitors" -o $OUT/index.html.tmp.html 2>/dev/null && mv $OUT/index.html.tmp.html $OUT/index.html
+logs | goaccess - "${COMMON[@]}" --ignore-crawlers --html-report-title="catchall.mx visitors" -o $OUT/visitors.tmp.html 2>/dev/null && mv $OUT/visitors.tmp.html $OUT/visitors.html
 logs | goaccess - "${COMMON[@]}" --crawlers-only --html-report-title="catchall.mx crawlers and bots" -o $OUT/bots.tmp.html 2>/dev/null && mv $OUT/bots.tmp.html $OUT/bots.html
+/usr/bin/python3 /opt/catchall/stats_report.py $OUT/index.html
 chown -R www-data:www-data $OUT
