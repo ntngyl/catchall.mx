@@ -809,5 +809,108 @@ def quarantine_delete():
 """, 500
 
 
+# ---- Private visitor statistics: sign-in form (nginx asks /stats/auth before serving /stats/) ----
+STATS_CONF = '/etc/catchall-stats.json'
+STATS_COOKIE = 'stats_session'
+STATS_DAYS = 30
+
+
+def _stats_conf():
+    import json
+    with open(STATS_CONF) as f:
+        return json.load(f)
+
+
+def _stats_sign(expires, secret):
+    import hmac, hashlib
+    return hmac.new(bytes.fromhex(secret), str(expires).encode(), hashlib.sha256).hexdigest()
+
+
+def _stats_signed_in():
+    import hmac, time
+    try:
+        expires, sig = request.cookies.get(STATS_COOKIE, '').split('.', 1)
+        return int(expires) > time.time() and hmac.compare_digest(sig, _stats_sign(int(expires), _stats_conf()['secret']))
+    except Exception:
+        return False
+
+
+@app.route('/stats/auth')
+def stats_auth():
+    return ('', 204) if _stats_signed_in() else ('', 401)
+
+
+@app.route('/stats/logout', methods=['POST'])
+def stats_logout():
+    resp = app.make_response(('', 303, {'Location': '/stats/login'}))
+    resp.delete_cookie(STATS_COOKIE, path='/stats/')
+    return resp
+
+
+@app.route('/stats/login', methods=['GET', 'POST'])
+def stats_login():
+    import hashlib, hmac, time
+    error = ''
+    if request.method == 'GET' and _stats_signed_in():
+        return '', 303, {'Location': '/stats/'}
+    if request.method == 'POST':
+        ip = request.headers.get('X-Real-IP') or request.remote_addr or ''
+        rl_key = "rl:statslogin:" + hashlib.sha256(ip.encode()).hexdigest()[:16]
+        if int(r.get(rl_key) or 0) >= 10:
+            error = 'Too many attempts. Please try again in an hour.'
+        else:
+            conf = _stats_conf()
+            given = hashlib.pbkdf2_hmac('sha256', request.form.get('password', '')[:200].encode(),
+                                        bytes.fromhex(conf['salt']), 200000).hex()
+            if hmac.compare_digest(given, conf['hash']):
+                expires = int(time.time()) + STATS_DAYS * 86400
+                resp = app.make_response(('', 303, {'Location': '/stats/'}))
+                resp.set_cookie(STATS_COOKIE, f"{expires}.{_stats_sign(expires, conf['secret'])}",
+                                max_age=STATS_DAYS * 86400, path='/stats/', secure=True, httponly=True, samesite='Lax')
+                return resp
+            if r.incr(rl_key) == 1:
+                r.expire(rl_key, 3600)
+            error = 'That password is not right.'
+    err = f'<p class="err" role="alert">{html_escape(error)}</p>' if error else ''
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Sign in - CatchAll.mx stats</title>
+    <link rel="stylesheet" href="/site.css?v=5">
+    <!-- own stylesheet; /app.css is not used on this page -->
+    <style>
+        .signin {{ max-width: 380px; padding: 72px 0 96px; }}
+        .signin h1 {{ margin-bottom: 8px; }}
+        .signin label {{ display: block; font: 600 14px var(--sans); margin: 26px 0 8px; }}
+        .signin input {{ width: 100%; box-sizing: border-box; padding: 12px 14px; font: 16px var(--sans); color: var(--ink);
+                         background: var(--bg); border: 1px solid var(--line); border-radius: 9px; }}
+        .signin input:focus {{ outline: 2px solid var(--ink); outline-offset: 1px; }}
+        .signin .btn {{ margin-top: 16px; width: 100%; }}
+        .signin .err {{ color: var(--bad); margin: 18px 0 0; font-size: 15px; }}
+    </style>
+</head>
+<body>
+    <header class="top"><div class="wrap">
+        <a class="logo" href="/"><i></i>catchall.mx</a>
+    </div></header>
+    <main><div class="wrap"><div class="signin">
+        <h1>Visitor stats</h1>
+        <p class="soft">Private page. Sign in to continue.</p>
+        {err}
+        <form method="post" action="/stats/login">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+            <button class="btn" type="submit">Sign in</button>
+        </form>
+    </div></div></main>
+</body>
+</html>
+"""
+    return html, (401 if error else 200), {'Cache-Control': 'no-store'}
+
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=False)
