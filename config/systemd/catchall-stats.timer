@@ -1,0 +1,7 @@
+[Unit]
+Description=Rebuild CatchAll.mx visitor statistics every 10 minutes
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+[Install]
+WantedBy=timers.target

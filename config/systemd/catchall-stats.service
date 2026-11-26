@@ -1,0 +1,5 @@
+[Unit]
+Description=CatchAll.mx visitor statistics
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/catchall-stats
