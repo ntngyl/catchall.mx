@@ -2,9 +2,9 @@
 """Build the private service statistics page (/stats/) for catchall.mx.
 
 Reads counters from Redis, the forwarder log, the Postfix log and rspamd, and
-writes a plain HTML page. Daily totals are kept as numbers only in
-/var/lib/catchall-stats/daily.json so the history outlives the 7-day mail logs;
-no addresses or message content are stored there.
+writes a plain HTML page. Daily totals (overall and per domain) are kept as
+numbers only in /var/lib/catchall-stats/ so the history outlives the 7-day mail
+logs; no email addresses or message content are stored there.
 """
 import glob, gzip, json, os, re, subprocess, sys, time
 from datetime import datetime, timezone, timedelta
@@ -13,6 +13,7 @@ from html import escape
 import redis
 
 STATE = '/var/lib/catchall-stats/daily.json'
+DOMAIN_STATE = '/var/lib/catchall-stats/domains.json'
 OUT = sys.argv[1] if len(sys.argv) > 1 else '/var/www/stats/index.html'
 MONTHS = {m: i + 1 for i, m in enumerate('Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split())}
 
@@ -60,18 +61,22 @@ def collect():
     days = {}
     def bump(day, key):
         days.setdefault(day, {})[key] = days.get(day, {}).get(key, 0) + 1
-    domains = {}
+    domains, per_domain, current = {}, {}, None
     for ln in lines('/var/log/catchall/forwarder.log*'):
         day = ln[:10]
         if not re.fullmatch(r'\d{4}-\d\d-\d\d', day):
             continue
+        if 'Processing email for' in ln:
+            m = re.search(r'\(domain: ([^)]+)\)|Processing email for (\S+)$', ln.strip())
+            current = (m.group(1) or m.group(2)).split('@')[-1].lower().rstrip('.') if m else None
+            if current:
+                domains.setdefault(day, set()).add(current)
         for key, text in FORWARDER:
             if text in ln:
                 bump(day, key)
-        if 'Processing email for' in ln:
-            m = re.search(r'\(domain: ([^)]+)\)|Processing email for (\S+)$', ln.strip())
-            if m:
-                domains.setdefault(day, set()).add((m.group(1) or m.group(2)).split('@')[-1].lower())
+                if current:
+                    d = per_domain.setdefault(current, {}).setdefault(day, {})
+                    d[key] = d.get(key, 0) + 1
     year = datetime.now(timezone.utc).year
     for ln in lines('/var/log/mail.log*'):
         day = mail_day(ln, year)
@@ -86,7 +91,7 @@ def collect():
             bump(day, 'deferred' if ' 450 ' in ln else 'rejected')
     for day, names in domains.items():
         days[day]['domains'] = len(names)
-    return days
+    return days, per_domain
 
 
 def merged(fresh, snapshot):
@@ -106,6 +111,75 @@ def merged(fresh, snapshot):
         json.dump(state, f, sort_keys=True)
     os.replace(STATE + '.tmp', STATE)
     return state
+
+
+def merged_domains(fresh):
+    try:
+        with open(DOMAIN_STATE) as f:
+            state = json.load(f)
+    except (OSError, ValueError):
+        state = {}
+    for domain, days in fresh.items():
+        for day, counts in days.items():
+            old = state.setdefault(domain, {}).setdefault(day, {})
+            for k, v in counts.items():
+                old[k] = max(v, old.get(k, 0))
+    fd = os.open(DOMAIN_STATE + '.tmp', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w') as f:
+        json.dump(state, f, sort_keys=True)
+    os.replace(DOMAIN_STATE + '.tmp', DOMAIN_STATE)
+    return state
+
+
+def domain_status():
+    """Current state of every domain known to the service, from Redis."""
+    r = redis.Redis(decode_responses=True)
+    def names(prefix):
+        return {k.split(':', 1)[1].lower() for k in r.scan_iter(prefix + ':*', count=500)}
+    active = {}
+    for k in r.scan_iter('active:*', count=500):
+        try:
+            active[k.split(':', 1)[1].lower()] = int(r.get(k) or 0)
+        except ValueError:
+            active[k.split(':', 1)[1].lower()] = 0
+    blocked = {d.lower() for d in r.smembers('abuse:domains')} if r.type('abuse:domains') == 'set' else set()
+    return {'active': active, 'dkim': names('dkim'), 'consent': names('consent'),
+            'pending': names('verify'), 'blocked': blocked}
+
+
+def domain_rows(dstate, status, week):
+    known = set(dstate) | set(status['active']) | status['pending'] | status['dkim']
+    out = []
+    for dom in known:
+        days = dstate.get(dom, {})
+        def tot(key, since=None):
+            return sum(c.get(key, 0) for d, c in days.items() if not since or d >= since)
+        if dom in status['blocked']:
+            state, order = 'Blocked', 4
+        elif dom in status['active'] and time.time() - status['active'][dom] <= 30 * 86400:
+            state, order = 'Active', 0
+        elif dom in status['active']:
+            state, order = 'Dormant', 1
+        elif dom in status['pending']:
+            state, order = 'Waiting', 2
+        else:
+            state, order = 'Unconfirmed', 3
+        since = status['active'].get(dom)
+        mail_days = [d for d, c in days.items() if c.get('received')]
+        if order == 3 and (dom == 'catchall.mx' or dom.endswith('.invalid')
+                           or tot('no_address') >= tot('received')):
+            continue
+        out.append({
+            'domain': dom, 'state': state, 'order': order,
+            'since': datetime.fromtimestamp(since, timezone.utc).strftime('%-d %b %Y') if since else '',
+            'dkim': dom in status['dkim'], 'consent': dom in status['consent'],
+            'r7': tot('received', week), 'f7': tot('forwarded', week),
+            'r': tot('received'), 'f': tot('forwarded'), 'spam': tot('spam'),
+            'held': tot('held'), 'refused': tot('refused'),
+            'last': datetime.strptime(max(mail_days), '%Y-%m-%d').strftime('%-d %b') if mail_days else '',
+        })
+    out.sort(key=lambda x: (x['order'], -x['r7'], -x['r'], -(status['active'].get(x['domain']) or 0), x['domain']))
+    return out
 
 
 def count_keys(r, pattern):
@@ -137,8 +211,20 @@ def snapshot():
         postfix_queue = len([l for l in q.splitlines() if l.strip()])
     except Exception:
         postfix_queue = 0
+    blocked = {d.lower() for d in r.smembers('abuse:domains')} if r.type('abuse:domains') == 'set' else set()
+    confirmed, recent = set(), set()
+    for k in r.scan_iter('active:*', count=500):
+        name = k.split(':', 1)[1].lower()
+        confirmed.add(name)
+        try:
+            if time.time() - int(r.get(k) or 0) <= 30 * 86400:
+                recent.add(name)
+        except ValueError:
+            pass
     return {
-        'active': count_keys(r, 'active:*'), 'dkim': count_keys(r, 'dkim:*'),
+        'active': len(recent - blocked), 'dormant': len(confirmed - recent - blocked),
+        'active_blocked': len(confirmed & blocked),
+        'dkim': count_keys(r, 'dkim:*'),
         'consent': count_keys(r, 'consent:*'), 'pending': count_keys(r, 'verify:*'),
         'blocked_domains': r.scard('abuse:domains') if r.type('abuse:domains') == 'set' else 0,
         'waiting': files_in('/var/spool/catchall/queue'),
@@ -151,7 +237,7 @@ def n(v):
     return f'{v:,}'
 
 
-def render(state, snap, spam):
+def render(state, snap, spam, dstate, status):
     now = datetime.now(timezone.utc)
     today = now.strftime('%Y-%m-%d')
     def total(keys, since=None):
@@ -165,11 +251,11 @@ def render(state, snap, spam):
                 f'<span class="n">{escape(note)}</span></div>')
 
     tiles_domains = ''.join([
-        tile('Active domains', n(snap['active']), 'pointed at the service and confirmed'),
+        tile('Active domains', n(snap['active']), 'confirmed, with mail forwarded or confirmed in the last 30 days'),
+        tile('Dormant domains', n(snap['dormant']), 'confirmed earlier, quiet for 30+ days'),
         tile('With DKIM signing', n(snap['dkim'])),
-        tile('Destination confirmed', n(snap['consent']), 'under the consent system'),
         tile('Waiting for confirmation', n(snap['pending']), 'link sent, not yet clicked'),
-        tile('Blocked for abuse', n(snap['blocked_domains']), 'domains'),
+        tile('Blocked for abuse', n(snap['blocked_domains']), f"domains; {n(snap['active_blocked'])} of them had been confirmed"),
     ])
     recv7, fwd7 = total(['received'], week), total(['forwarded'], week)
     tiles_mail = ''.join([
@@ -203,6 +289,26 @@ def render(state, snap, spam):
                  + (f'<td>{n(c["connections"])}</td><td>{n(d)}</td>' if seen_door else '<td><i>–</i></td><td><i>–</i></td>')
                  + f'<td>{n(c["active"]) if c.get("active") else "<i>–</i>"}</td></tr>')
 
+    def num(v):
+        return n(v) if v else '<i>0</i>'
+    tone = {'Active': 'good', 'Blocked': 'bad'}  # other states stay neutral
+    drows, listed = '', domain_rows(dstate, status, week)
+    for x in listed:
+        drows += (f'<tr><th scope="row">{escape(x["domain"])}</th>'
+                  f'<td class="l"><span class="st {tone.get(x["state"], "")}">{x["state"]}</span></td>'
+                  f'<td class="l">{x["since"] or "<i>–</i>"}</td>'
+                  f'<td class="l">{"Yes" if x["dkim"] else "<i>–</i>"}</td>'
+                  f'<td class="l">{"Yes" if x["consent"] else "<i>–</i>"}</td>'
+                  + (f'<td>{n(x["r7"])} / {n(x["f7"])}</td>' if x['r7'] else '<td><i>0</i></td>')
+                  + (f'<td>{n(x["r"])} / {n(x["f"])}</td>' if x['r'] else '<td><i>0</i></td>')
+                  + ''.join(f'<td>{num(x[k])}</td>' for k in ('spam', 'held', 'refused'))
+                  + f'<td>{x["last"] or "<i>–</i>"}</td></tr>')
+    quiet_blocked = len(status['blocked'] - {x['domain'] for x in listed})
+    counts = {}
+    for x in listed:
+        counts[x['state']] = counts.get(x['state'], 0) + 1
+    dsummary = ', '.join(f'{v} {k.lower()}' for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -230,6 +336,11 @@ def render(state, snap, spam):
         th[scope=row], thead th:first-child {{ text-align: left; font-weight: 500; }}
         tbody tr:last-child th, tbody tr:last-child td {{ border-bottom: 0; }}
         td i {{ font-style: normal; color: var(--faint); }}
+        td.l, thead th.l {{ text-align: left; }}
+        .domains {{ min-width: 900px; }} .domains th, .domains td {{ padding: 8px 9px; }}
+        .domains th[scope=row] {{ font-family: var(--mono); font-size: 13.5px; max-width: 230px; overflow: hidden; text-overflow: ellipsis; }}
+        .st {{ color: var(--soft); }} .st.good {{ color: var(--good); }} .st.bad {{ color: var(--bad); }}
+        h2 small {{ font-weight: 400; color: var(--soft); margin-left: 8px; }}
         .top nav {{ display: flex; align-items: center; gap: 20px; font-size: 15px; }}
         .top nav a {{ text-decoration: none; color: var(--soft); }} .top nav a:hover, .top nav a.on {{ color: var(--ink); }}
         .top form {{ display: inline; }}
@@ -270,10 +381,23 @@ def render(state, snap, spam):
             <th>Connections</th><th>Turned away</th><th>Active domains</th></tr></thead>
             <tbody>{rows}</tbody>
         </table></div>
+        <h2>Domain list <small>{len(listed)} listed: {dsummary}</small></h2>
+        <div class="scroll"><table class="domains">
+            <thead><tr><th>Domain</th><th class="l">Status</th><th class="l">Last active</th><th class="l">DKIM</th>
+            <th class="l">Consent</th><th>7 days in / out</th><th>All in / out</th><th>Spam</th><th>Held</th><th>Refused</th><th>Last mail</th></tr></thead>
+            <tbody>{drows}</tbody>
+        </table></div>
+        <p class="foot">Every domain that is active, waiting for confirmation, has a DKIM key, or has received
+        mail since 18 November. In / out is messages received and forwarded. Last active is the last time
+        mail was forwarded or the destination was confirmed. Dormant domains are asked to confirm again when their
+        next message arrives. Waiting means a confirmation link was sent and not yet clicked. Unconfirmed means the domain pointed here and mail arrived, but nobody confirmed the destination.
+        {quiet_blocked} more blocked domains have no mail on record and are not listed. Consent shows domains
+        confirmed under the per-destination consent system; older active domains were confirmed before it existed.</p>
+
         <p class="foot">Held means waiting for the owner to confirm; Refused means the destination mailbox provider said no. Received counts messages that passed the door checks and reached the forwarder.
         Turned away at the door counts senders stopped before sending anything: on a blocklist, talking
         out of turn, or addressed to a domain we do not serve. Door figures start on 24 November, when
-        the service moved to this server. Only daily totals are kept; no addresses or message content.</p>
+        the service moved to this server. Only daily totals are kept, overall and per domain; no email addresses or message content.</p>
     </div></main>
 </body>
 </html>
@@ -282,8 +406,9 @@ def render(state, snap, spam):
 
 if __name__ == '__main__':
     snap = snapshot()
-    state = merged(collect(), snap)
-    html = render(state, snap, rspamd())
+    days, per_domain = collect()
+    state = merged(days, snap)
+    html = render(state, snap, rspamd(), merged_domains(per_domain), domain_status())
     with open(OUT + '.tmp', 'w') as f:
         f.write(html)
     os.replace(OUT + '.tmp', OUT)
